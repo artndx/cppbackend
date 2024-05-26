@@ -9,12 +9,15 @@ using net::ip::tcp;
 
 using namespace std::literals;
 
-int main() {
-    static const int port = 3333;
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        std::cout << "Usage: "sv << argv[0] << " <port>"sv << std::endl;
+        return 1;
+    }
 
     net::io_context io_context;
 
-    tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), port));
+    tcp::acceptor acceptor(io_context, tcp::endpoint(tcp::v4(), std::stoi(argv[1])));
     std::cout << "Waiting for connection..."sv << std::endl;
 
     boost::system::error_code ec;

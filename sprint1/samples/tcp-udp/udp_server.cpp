@@ -10,14 +10,18 @@ using net::ip::udp;
 
 using namespace std::literals;
 
-int main() {
-    static const int port = 3333;
+int main(int argc, char** argv) {
+    if (argc != 2) {
+        std::cout << "Usage: "sv << argv[0] << " <port>"sv << std::endl;
+        return 1;
+    }
+
     static const size_t max_buffer_size = 1024;
 
     try {
         boost::asio::io_context io_context;
 
-        udp::socket socket(io_context, udp::endpoint(udp::v4(), port));
+        udp::socket socket(io_context, udp::endpoint(udp::v4(), std::stoi(argv[1])));
 
         // Запускаем сервер в цикле, чтобы можно было работать со многими клиентами
         for (;;) {

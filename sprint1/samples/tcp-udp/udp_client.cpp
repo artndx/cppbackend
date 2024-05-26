@@ -9,11 +9,10 @@ using net::ip::udp;
 using namespace std::literals;
 
 int main(int argc, const char** argv) {
-    static const int port = 3333;
     static const size_t max_buffer_size = 1024;
 
-    if (argc != 2) {
-        std::cout << "Usage: "sv << argv[0] << " <server IP>"sv << std::endl;
+    if (argc != 3) {
+        std::cout << "Usage: "sv << argv[0] << " <server IP> <port>"sv << std::endl;
         return 1;
     }
 
@@ -25,7 +24,7 @@ int main(int argc, const char** argv) {
         udp::socket socket(io_context, udp::v4());
 
         boost::system::error_code ec;
-        auto endpoint = udp::endpoint(net::ip::make_address(argv[1], ec), port);
+        auto endpoint = udp::endpoint(net::ip::make_address(argv[1], ec), std::stoi(argv[2]));
         socket.send_to(net::buffer("Hello from UDP-client"sv), endpoint);
 
         // Получаем данные и endpoint.
