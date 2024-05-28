@@ -108,7 +108,7 @@ StringResponse HandleRequest(StringRequest&& req) {
     return responce;
 } 
 
-/*  Обрабатывает запросы клиента по установившемуся соединению */
+/*  Обрабатывает запросы клиента по установленному соединению */
 template<typename RequestHandler>
 void HandleConnection(tcp::socket& socket, RequestHandler&& handle_request) {
     try {
