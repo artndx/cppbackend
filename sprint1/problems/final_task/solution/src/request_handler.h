@@ -62,10 +62,9 @@ private:
                 if(map_ptr){
                     std::string body = json_responses::MakeMapDescription(map_ptr);
                     return MakeResponse<Body>(http::status::ok, body, req.version(), body.size(), std::string("application/json"));
-                } else {
-                    std::string body = json_responses::MakeMapNotFound();
-                    return MakeResponse<Body>(http::status::not_found, body,  req.version(), body.size(), std::string("application/json"));
                 }
+                std::string body = json_responses::MakeMapNotFound();
+                return MakeResponse<Body>(http::status::not_found, body,  req.version(), body.size(), std::string("application/json"));
             } else if(boost::regex_match(req_target, boost::regex ("(/api/)+"))) {
                 std::string body = json_responses::MakeBadRequest();
                 return MakeResponse<Body>(http::status::bad_request, body, req.version(), body.size(), std::string("application/json"));

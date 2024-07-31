@@ -10,7 +10,7 @@ namespace json = boost::json;
 namespace json_loader {
 
 int GetInt(std::string key, const json::object& obj){
-    return int(obj.at(key).as_int64());
+    return static_cast<int>(obj.at(key).as_int64());
 }
 
 std::string GetString(std::string key, const json::object& obj){
@@ -64,9 +64,6 @@ void AddMapsFromJson(std::string json_str, Game& game){
     json::array json_maps = json::parse(json_str).as_object().at("maps").as_array();
     for(const json::value& value : json_maps){
         json::object json_map = value.as_object();  
-        std::string id = GetString("id", json_map);
-        std::string name = GetString("name", json_map);
-
 
         Map map{Map::Id{GetString("id", json_map)}, GetString("name", json_map)};
         AddRoadsFromJson(json_map, map);

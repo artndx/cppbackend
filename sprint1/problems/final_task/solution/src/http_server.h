@@ -94,6 +94,7 @@ private:
     void Close() {
         beast::error_code ec;
         stream_.socket().shutdown(tcp::socket::shutdown_send, ec);
+        ReportError(ec, "close");
     }
 
     // Обработку запроса делегируем подклассу
