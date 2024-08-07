@@ -1,0 +1,1 @@
+.\build\bin\game_server.exe .\data\config.json .\static\
