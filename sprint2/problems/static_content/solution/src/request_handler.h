@@ -138,18 +138,19 @@ private:
 
         http::file_body::value_type file;
         std::string uncoded_target = DecodeTarget(req.target().substr(1));
+        std::string content_type = GetRequiredContentType(req.target());
 
         fs::path required_path(uncoded_target);
         fs::path summary_path = fs::weakly_canonical(static_path_ / required_path);
         if (sys::error_code ec; file.open(summary_path.string().data(), beast::file_mode::read, ec), ec) {
             std::string empty_body;
             return MakeResponse(http::status::not_found, empty_body,  
-                                            req.version(), empty_body.size(), std::string("application/json"));
+                                            req.version(), empty_body.size(), content_type);
         }
         
         response.version(req.version());
         response.result(http::status::ok);
-        response.insert(http::field::content_type, GetRequiredContentType(req.target()));
+        response.insert(http::field::content_type, content_type);
         response.body() = std::move(file);
         // Метод prepare_payload заполняет заголовки Content-Length и Transfer-Encoding
         // в зависимости от свойств тела сообщения
@@ -178,7 +179,7 @@ private:
                 std::string body = json_responses::MakeMapNotFound();
                 return MakeResponse(http::status::not_found, body,  
                                             req.version(), body.size(), std::string("application/json"));
-            } else if(boost::regex_match(req_target, boost::regex ("(/api/)+"))) {
+            } else if(boost::regex_match(req_target, boost::regex ("(/api/).+"))) {
                 std::string body = json_responses::MakeBadRequest();
                 return MakeResponse(http::status::bad_request, body, 
                                             req.version(), body.size(), std::string("application/json"));
