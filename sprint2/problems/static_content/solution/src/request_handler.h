@@ -145,7 +145,7 @@ private:
         if (sys::error_code ec; file.open(summary_path.string().data(), beast::file_mode::read, ec), ec) {
             std::string empty_body;
             return MakeResponse(http::status::not_found, empty_body,  
-                                            req.version(), empty_body.size(), content_type);
+                                            req.version(), empty_body.size(), "text/plain");
         }
         
         response.version(req.version());
