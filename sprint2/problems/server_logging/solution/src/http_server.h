@@ -78,9 +78,9 @@ private:
             return ReportError(ec, "read"sv);
         }
         std::string ip(stream_.socket().remote_endpoint().address().to_string());
-        std::string url(request_.target());
+        std::string uri(request_.target());
         std::string method(request_.method_string());
-        LOG_REQUEST_RECEIVED(ip, url, method);
+        LOG_REQUEST_RECEIVED(ip, uri, method);
         response_timer_.Start();
         HandleRequest(std::move(request_));
     }

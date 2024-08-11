@@ -20,8 +20,8 @@
         logger::Log({{"code"s, code} __VA_OPT__(, {"exception"s, __VA_ARGS__})}, logger::LOG_MESSAGES::SERVER_EXITED); 
 
 /* Получение запроса */
-#define LOG_REQUEST_RECEIVED(ip, URL, method) \
-    logger::Log({{"ip"s, ip}, {"URL"s, URL}, {"method", method}}, logger::LOG_MESSAGES::REQUEST_RECEIVED);
+#define LOG_REQUEST_RECEIVED(ip, URI, method) \
+    logger::Log({{"ip"s, ip}, {"URI"s, URI}, {"method", method}}, logger::LOG_MESSAGES::REQUEST_RECEIVED);
 
 /* Формирование ответа */
 #define LOG_RESPONSE_SENT(ip, response_time, code, content_type) \
