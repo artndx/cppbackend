@@ -33,7 +33,7 @@ int main(int argc, const char* argv[]) {
     LOG_TO_CONSOLE();
     
     if (argc != 3) {
-        std::cerr << "Usage: game_server <game-config-json> <game-static-folder>"sv << std::endl;
+        //std::cerr << "Usage: game_server <game-config-json> <game-static-folder>"sv << std::endl;
         LOG_SERVER_EXIT(EXIT_FAILURE);
         return EXIT_FAILURE;
     }
@@ -66,7 +66,7 @@ int main(int argc, const char* argv[]) {
         
 
         // Эта надпись сообщает тестам о том, что сервер запущен и готов обрабатывать запросы
-        std::cout << "Server has started..."sv << std::endl;
+        //std::cout << "Server has started..."sv << std::endl;
         LOG_SERVER_START(port, address.to_string());
         // std::cout << "http://158.160.90.219:8080/\n"sv << std::endl;
 
@@ -76,7 +76,7 @@ int main(int argc, const char* argv[]) {
             ioc.run();
         });
     } catch (const std::exception& ex) {
-        std::cerr << ex.what() << std::endl;
+        //std::cerr << ex.what() << std::endl;
         LOG_SERVER_EXIT(EXIT_FAILURE, ex.what());
         return EXIT_FAILURE;
     }
