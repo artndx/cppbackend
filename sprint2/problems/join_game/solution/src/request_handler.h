@@ -289,7 +289,7 @@ private:
                     return MakeErrorResponse(http::status::unauthorized, 
                         "unknownToken"sv, "Player token has not been found"sv, req.version());
                 } else {
-                    throw std::logic_error("Token is missign");
+                    throw std::logic_error("Token is missing");
                 }
             } catch(...){
                 return MakeErrorResponse(http::status::unauthorized, 
