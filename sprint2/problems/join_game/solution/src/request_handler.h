@@ -279,7 +279,7 @@ private:
                     std::string_view req_token = it->value();
                     api::Token token(std::string(req_token.substr(7, req_token.npos)));
                     if((*token).size() != 32){
-                        throw;
+                        throw std::logic_error("Incorrect token");
                     }
 
                     if(tokens_.FindPlayerByToken(token)){
