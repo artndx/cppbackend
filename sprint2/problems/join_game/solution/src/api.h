@@ -1,6 +1,7 @@
 #include "model.h"
 #include <random>
 #include <sstream>
+#include <iomanip>
 
 namespace api{
 
@@ -76,6 +77,11 @@ private:
     Token GenerateToken(){
         std::ostringstream out;
         out << std::hex << generator1_() << generator2_();
+        
+        size_t size = out.str().size();
+        if(size < 32){
+            out << std::setfill('0') << std::setw(32 - size);
+        }
         return Token(out.str());
     }
     std::random_device random_device_;

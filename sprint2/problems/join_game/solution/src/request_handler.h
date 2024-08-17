@@ -291,7 +291,8 @@ private:
                 } else {
                     throw std::logic_error("Token is missing");
                 }
-            } catch(...){
+            } catch(std::exception& ex){
+                std::cerr << ex.what() << std::endl;
                 return MakeErrorResponse(http::status::unauthorized, 
                     "invalidToken"sv, "Authorization header is missing"sv, req.version());
             }
