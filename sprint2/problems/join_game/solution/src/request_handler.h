@@ -210,6 +210,9 @@ private:
         ++auto_counter_;
 
         api::Token token = tokens_.AddPlayer(player);
+        if((*token).size() != 32){
+            throw std::runtime_error("Token generation failed");
+        }
         
         json::object json_body;
         json_body["authToken"] = *token;
@@ -387,8 +390,8 @@ public:
                     // Этот assert не выстрелит, так как лямбда-функция будет выполняться внутри strand
                     assert(self->api_handler_.api_strand_.running_in_this_thread());
                     return send(self->api_handler_.MakeApiResponse(self->game_, req));
-                } catch (...) {
-                    send(self->api_handler_.MakeErrorResponse(http::status::bad_request, "badRequest"sv, "Bad request"sv, req.version()));
+                } catch (std::exception& ex) {
+                    send(self->api_handler_.MakeErrorResponse(http::status::bad_request, "badRequest"sv, std::string_view("Bad request"s + ex.what()), req.version()));
                 }
             };
             return net::dispatch(api_handler_.api_strand_, handle);
