@@ -68,8 +68,13 @@ const Player* PlayerTokens::FindPlayerByToken(const Token& token) const{
 
 Token PlayerTokens::GenerateToken() {
     std::ostringstream out;
-    out << std::hex << generator1_() << generator2_();
-    return Token(out.str());
+    out << std::setw(32) << std::setfill('0') << std::hex << generator1_() << generator2_();
+    std::string token = out.str();
+    size_t size = token.size();
+    if(token.size() > 32){
+        token = token.substr(0, 32);
+    }
+    return Token(token);
 }
 
 /* ------------------------ GetMapUseCase ----------------------------------- */
