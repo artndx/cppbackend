@@ -76,13 +76,13 @@ public:
 private:
     Token GenerateToken(){
         std::ostringstream out;
-        out << std::hex << generator1_() << generator2_();
-        
-        size_t size = out.str().size();
-        if(size < 32){
-            out << std::setfill('0') << std::setw(32 - size);
+        out << std::setw(32) << std::setfill('0') << std::hex << generator1_() << generator2_();
+        std::string token = out.str();
+        size_t size = token.size();
+        if(token.size() > 32){
+            token = token.substr(0, 32);
         }
-        return Token(out.str());
+        return Token(token);
     }
     std::random_device random_device_;
 

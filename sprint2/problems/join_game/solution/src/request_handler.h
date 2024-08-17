@@ -210,9 +210,6 @@ private:
         ++auto_counter_;
 
         api::Token token = tokens_.AddPlayer(player);
-        if((*token).size() != 32){
-            throw std::runtime_error("Token generation failed");
-        }
         
         json::object json_body;
         json_body["authToken"] = *token;
