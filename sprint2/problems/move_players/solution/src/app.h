@@ -32,20 +32,28 @@ public:
         return name_;
     }
 
-    const Dog* GetDog() const{
+    Dog* GetDog(){
         return dog_;
+    }
+
+    const Dog* GetDog() const{
+        return static_cast<const Dog*>(dog_);
+    }
+
+    const GameSession* GetSession() const{
+        return session_;
     }
 private:
     friend PlayerTokens;
     friend Players;
 
-    Player(int id, Name name, const Dog* dog, const GameSession* session)
+    Player(int id, Name name, Dog* dog, const GameSession* session)
         : id_(id), name_(name), dog_(dog), session_(session){
     }
 
     int id_;
     Name name_;
-    const Dog* dog_;
+    Dog* dog_;
     const GameSession* session_;
 };
 
@@ -61,7 +69,7 @@ public:
     using PlayerList = std::unordered_map<DogMapKey, Player, DogMapKeyHasher>;
     Players() = default;
 
-    Player& Add(int id, const Player::Name& name, const Dog* dog, const GameSession* session);
+    Player& Add(int id, const Player::Name& name, Dog* dog, const GameSession* session);
 
     const Player* FindByDogIdAndMapId(int dog_id, std::string map_id) const;
 
@@ -76,7 +84,9 @@ class PlayerTokens{
 public:
     PlayerTokens() = default;
 
-    Token AddPlayer(const Player& player);
+    Token AddPlayer(Player& player);
+
+    Player* FindPlayerByToken(const Token& token); 
 
     const Player* FindPlayerByToken(const Token& token) const;
 private:
@@ -96,7 +106,7 @@ private:
     // два 64-разрядных числа и, переведя их в hex-строки, склейте в одну.
     // Вы можете поэкспериментировать с алгоритмом генерирования токенов,
     // чтобы сделать их подбор ещё более затруднительным
-    std::unordered_map<Token, const Player *, util::TaggedHasher<Token>> token_to_player_;
+    std::unordered_map<Token, Player*, util::TaggedHasher<Token>> token_to_player_;
 };
 
 /* ------------------------ Use Cases ----------------------------------- */

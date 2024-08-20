@@ -14,7 +14,7 @@ size_t Players::DogMapKeyHasher::operator()(const DogMapKey& value) const{
     return h1 * 37 + h2 * 37 * 37;
 }
 
-Player& Players::Add(int id, const Player::Name& name, const Dog* dog, const GameSession* session){
+Player& Players::Add(int id, const Player::Name& name, Dog* dog, const GameSession* session){
     DogMapKey key = std::make_pair(dog->GetId(), session->GetMap()->GetId());
     Player player(id, name, dog, session);
     auto [it, is_emplaced] = players_.emplace(key, player);
@@ -39,7 +39,7 @@ const Players::PlayerList& Players::GetPlayers() const{
 
 /* ---------------------- PlayerTokens ------------------------------------- */
 
-Token PlayerTokens::AddPlayer(const Player& player){
+Token PlayerTokens::AddPlayer(Player& player){
     auto [it, is_emplaced] = token_to_player_.emplace(GenerateToken(), &player);
     if(is_emplaced){
         return it->first;
@@ -48,12 +48,16 @@ Token PlayerTokens::AddPlayer(const Player& player){
     throw std::logic_error("Player with this token has already been added");
 }
 
-const Player* PlayerTokens::FindPlayerByToken(const Token& token) const{
+Player* PlayerTokens::FindPlayerByToken(const Token& token){
     try{
         return token_to_player_.at(token);
     } catch(...){
         return nullptr;
     }
+}
+
+const Player* PlayerTokens::FindPlayerByToken(const Token& token) const{
+    return static_cast<const Player*>(FindPlayerByToken(token));
 }
 
 Token PlayerTokens::GenerateToken() {
@@ -158,11 +162,11 @@ std::string GameUseCase::JoinGame(const std::string& user_name, const std::strin
     if(session == nullptr){
         session = game.AddSession(map_id);
     }
-    const model::Dog* dog = session->AddDog(auto_counter_, model::Dog::Name(user_name),
+    model::Dog* dog = session->AddDog(auto_counter_, model::Dog::Name(user_name),
                                             model::Dog::Position(GetRandomPos(game.FindMap(map_id)->GetRoads())), 
                                             model::Dog::Speed({0,0}),
                                             model::Direction::NORTH);
-    const app::Player& player = players_.Add(auto_counter_, app::Player::Name(user_name), dog, session);
+    app::Player& player = players_.Add(auto_counter_, app::Player::Name(user_name), dog, session);
     ++auto_counter_;
 
     app::Token token = tokens_.AddPlayer(player);
@@ -233,18 +237,20 @@ std::string GameUseCase::GetGameState() const{
 }
 
 std::string GameUseCase::SetAction(const json::object& action, const Token& token){
+    Player* player = tokens_.FindPlayerByToken(token);
+    double dog_speed = player->GetSession()->GetMap()->GetDogSpeed();
+    model::Dog::Speed new_speed({0, 0});    
     std::string dir = std::string(action.at("move").as_string());
     if(dir == "U"){
-
+        new_speed = model::Dog::Speed({0, -dog_speed});
     } else if(dir == "D"){
-        
+        new_speed = model::Dog::Speed({0, dog_speed});
     } else if(dir == "L"){
-        
+        new_speed = model::Dog::Speed({-dog_speed, 0});
     } else if(dir == "R"){
-        
-    } else if(dir == ""){
-        
+        new_speed = model::Dog::Speed({dog_speed, 0});
     }
+    player->GetDog()->SetSpeed(new_speed);
     return "{}";
 }
 

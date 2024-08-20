@@ -144,6 +144,10 @@ public:
         return pos_;
     }
 
+    void SetSpeed(const Speed& new_speed){
+        speed_ = new_speed;
+    }
+
     const Speed& GetSpeed() const{
         return speed_;
     }
@@ -228,7 +232,7 @@ public:
         : map_(map){
     }
 
-    const Dog* AddDog(int id, const Dog::Name& name, 
+    Dog* AddDog(int id, const Dog::Name& name, 
                         const Dog::Position& pos, const Dog::Speed& vel, 
                         Direction dir){
         dogs_.emplace_back(id, name, pos, vel, dir);

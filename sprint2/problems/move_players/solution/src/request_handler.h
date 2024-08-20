@@ -77,6 +77,40 @@ protected:
 
 class ApiHandler : public BaseHandler{
     friend class RequestHandler;
+    
+    /*
+    Класс для формирования набора методов,
+    который передается в функции, проверяющие 
+    запросы на наличие определенных методов
+    */
+    class SetMethods{
+    public:
+        template<typename... Args>
+        SetMethods(Args&&... args){
+            (methods_.insert(std::forward<Args>(args)), ...);
+        }
+
+        bool IsSame(const std::string& other) const{
+            return methods_.count(other);
+        }
+
+        std::string MakeSequence() const{
+            std::ostringstream oss;
+            bool is_first = true;
+            for(const auto& method : methods_){
+                if(!is_first){
+                    oss << ", ";
+                }
+                is_first = false;
+                oss << method;
+            }
+
+            return oss.str();
+        }
+    private:
+        std::set<std::string> methods_;
+    };
+
 public:
     template<typename Request>
     StringResponse MakeApiResponse(Request&& req){
@@ -89,7 +123,8 @@ public:
         } else if(detail::IsMatched(target, "(/api/v1/game/).*"s)){
             StringResponse res;
             if(detail::IsMatched(target, "(/api/v1/game/join)"s)){
-                res = MakeAuthResponse(req);
+                SetMethods available_methods("POST");
+                res = MakeAuthResponse(available_methods, req);
             } else if(detail::IsMatched(target, "(/api/v1/game/players)"s)) {
                 res =  MakePlayerListResponse(req);
             } else if(detail::IsMatched(target, "(/api/v1/game/state)"s)) {
@@ -117,9 +152,9 @@ private:
     StringResponse MakeMapDescResponse(const std::string& req_target, unsigned req_version);
 
     template<typename Request>
-    StringResponse MakeAuthResponse(Request&& req){
-        
-        if(req.method_string() == "POST"s){
+    StringResponse MakeAuthResponse(const SetMethods& methods, Request&& req){
+        std::string method = std::string(req.method_string());
+        if(methods.IsSame(method)){
             if(req.at(http::field::content_type) == "application/json"sv){
                 json::object body;
                 try{
@@ -155,7 +190,7 @@ private:
         }
         auto res =  MakeErrorResponse(http::status::method_not_allowed, 
             "invalidMethod"sv, "Only POST method is expected"sv, req.version());
-        res.insert("Allow"s, "POST"s);
+        res.insert("Allow"s, methods.MakeSequence());
         return res;
     }
     /* 
@@ -166,9 +201,9 @@ private:
         с переданным ей запросом.
     */
     template <typename Request, typename Fn>
-    StringResponse ExecuteAuthorized(Request&& req, Fn&& action) {
-
-        if(req.method_string() == "GET"s || req.method_string() == "HEAD"s){
+    StringResponse ExecuteAuthorized(const SetMethods& methods, Request&& req, Fn&& action) {
+        std::string method = std::string(req.method_string());
+        if(methods.IsSame(method)){
             auto it = req.find(http::field::authorization);
             try{
                 if(it != req.end()){
@@ -196,13 +231,14 @@ private:
 
         auto res =  MakeErrorResponse(http::status::method_not_allowed, 
             "invalidMethod"sv, "Invalid method"sv, req.version());
-        res.insert("Allow"s, "GET, HEAD"s);
+        res.insert("Allow"s, methods.MakeSequence());
         return res;
     }
 
     template<typename Request>
     StringResponse MakePlayerListResponse(Request&& req){
-        return ExecuteAuthorized(req, [this](Request&& req, [[maybe_unused]] const app::Token& token){
+        SetMethods available_methods("GET", "HEAD");
+        return ExecuteAuthorized(available_methods, req, [this](Request&& req, [[maybe_unused]] const app::Token& token){
                 std::string body = this->app_.GetPlayerList();
                 return this->MakeResponse(http::status::ok, body, req.version(), body.size(), 
                     "application/json"s);
@@ -211,7 +247,8 @@ private:
 
     template<typename Request>
     StringResponse MakeGameStateResponse(Request&& req){
-        return ExecuteAuthorized(req, [this](Request&& req, [[maybe_unused]] const app::Token& token){
+        SetMethods available_methods("GET", "HEAD");
+        return ExecuteAuthorized(available_methods, req, [this](Request&& req, [[maybe_unused]] const app::Token& token){
                 std::string body = this->app_.GetGameState();
                 return this->MakeResponse(http::status::ok, body, req.version(), body.size(), 
                     "application/json"s);
@@ -226,7 +263,8 @@ private:
                     json::object action = json::parse(req.body()).as_object();
                     if(auto it = action.find("move"); it != action.end()){
                         /* Запрос без ошибок */
-                        return ExecuteAuthorized(req, [this, &action](Request&& req, [[maybe_unused]] const app::Token& token){
+                        SetMethods available_methods("POST");
+                        return ExecuteAuthorized(available_methods, req, [this, &action](Request&& req, [[maybe_unused]] const app::Token& token){
                             std::string body = this->app_.ApplyPlayerAction(action, token);
                             return this->MakeResponse(http::status::ok, body, req.version(), body.size(), 
                             "application/json"s);
