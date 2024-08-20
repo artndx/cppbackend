@@ -66,8 +66,6 @@ public:
     const Player* FindByDogIdAndMapId(int dog_id, std::string map_id) const;
 
     const PlayerList& GetPlayers() const;
-
-    void PrintPlayers() const;
 private:
     PlayerList players_;
 };
@@ -172,7 +170,6 @@ public:
     }
 
     std::string GetGameState(){
-        players_.PrintPlayers();
         return game_handler_.GetGameState();
     }
 private:

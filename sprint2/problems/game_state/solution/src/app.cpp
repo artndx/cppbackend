@@ -37,16 +37,6 @@ const Players::PlayerList& Players::GetPlayers() const{
     return players_;
 }
 
-void Players::PrintPlayers() const{
-    for(const auto& [key, player] : players_){
-        std::cout << key.first << ", " << *(key.second) << '\n';
-        auto pos = *(player.GetDog()->GetPosition());
-        std::cout << pos.first << ", " << pos.second << '\n';
-        
-        std::cout << "direction :" << int(player.GetDog()->GetDirection()) << '\n';
-    }
-}
-
 /* ---------------------- PlayerTokens ------------------------------------- */
 
 Token PlayerTokens::AddPlayer(const Player& player){

@@ -78,7 +78,7 @@ class ApiHandler : public BaseHandler{
     friend class RequestHandler;
 public:
     template<typename Request>
-    StringResponse MakeApiResponse(model::Game& game, Request&& req){
+    StringResponse MakeApiResponse(Request&& req){
         using namespace std::literals;
         
         std::string target = std::string(req.target());
@@ -152,15 +152,15 @@ private:
         res.insert("Allow"s, "POST"s);
         return res;
     }
-
     /* 
         Проверяет на правильность запрос 
         с авторизационным токеном.
         Если запрос невалиден, возвращает ответ с кодом ошибки.
-        Если валиден, то пустой ответ - nullopt.
+        Если валиден, то вызывает функцию action 
+        с переданным ей запросом.
     */
-    template<typename Request>
-    std::optional<StringResponse> CheckAuthRequest(Request&& req){
+    template <typename Request, typename Fn>
+    StringResponse ExecuteAuthorized(Request&& req, Fn&& action) {
         using namespace std::literals;
 
         if(req.method_string() == "GET"s || req.method_string() == "HEAD"s){
@@ -175,7 +175,7 @@ private:
 
                     if(app_.FindPlayerByToken(token)){
                         /* Запрос без ошибок */
-                        return std::nullopt;
+                        return action(std::move(req));
                     }
 
                     return MakeErrorResponse(http::status::unauthorized, 
@@ -195,38 +195,71 @@ private:
         return res;
     }
 
+    /* 
+        Проверяет на правильность запрос 
+        с авторизационным токеном.
+        Если запрос невалиден, возвращает ответ с кодом ошибки.
+        Если валиден, то пустой ответ - nullopt.
+    */
+    
+    // template<typename Request>
+    // std::optional<StringResponse> CheckAuthRequest(Request&& req){
+    //     using namespace std::literals;
+
+    //     if(req.method_string() == "GET"s || req.method_string() == "HEAD"s){
+    //         auto it = req.find(http::field::authorization);
+    //         try{
+    //             if(it != req.end()){
+    //                 std::string_view req_token = it->value();
+    //                 app::Token token(std::string(req_token.substr(7, req_token.npos)));
+    //                 if((*token).size() != 32){
+    //                     throw std::logic_error("Incorrect token");
+    //                 }
+
+    //                 if(app_.FindPlayerByToken(token)){
+    //                     /* Запрос без ошибок */
+    //                     return std::nullopt;
+    //                 }
+
+    //                 return MakeErrorResponse(http::status::unauthorized, 
+    //                     "unknownToken"sv, "Player token has not been found"sv, req.version());
+    //             } else {
+    //                 throw std::logic_error("Token is missing");
+    //             }
+    //         } catch(...){
+    //             return MakeErrorResponse(http::status::unauthorized, 
+    //                 "invalidToken"sv, "Authorization header is missing"sv, req.version());
+    //         }
+    //     }
+
+    //     auto res =  MakeErrorResponse(http::status::method_not_allowed, 
+    //         "invalidMethod"sv, "Invalid method"sv, req.version());
+    //     res.insert("Allow"s, "GET, HEAD"s);
+    //     return res;
+    // }
+    
+
     template<typename Request>
     StringResponse MakePlayerListResponse(Request&& req){
         using namespace std::literals;
-        unsigned version = req.version();
-
-        auto response = CheckAuthRequest(req);
-        if(response.has_value()){
-            return *response;
-        }
-
-        std::string body = app_.GetPlayerList();
-        return MakeResponse(http::status::ok, body, version, body.size(), 
-            "application/json"s);
+        return ExecuteAuthorized(req, [this](Request&& req){
+                std::string body = this->app_.GetPlayerList();
+                return this->MakeResponse(http::status::ok, body, req.version(), body.size(), 
+                    "application/json"s);
+        });
     }
 
     template<typename Request>
     StringResponse MakeGameStateResponse(Request&& req){
         using namespace std::literals;
-        unsigned version = req.version();
-
-        auto response = CheckAuthRequest(req);
-        if(response.has_value()){
-            return *response;
-        }
-
-        std::string body = app_.GetGameState();
-        return MakeResponse(http::status::ok, body, version, body.size(), 
-            "application/json"s);
+        return ExecuteAuthorized(req, [this](Request&& req){
+                std::string body = this->app_.GetGameState();
+                return this->MakeResponse(http::status::ok, body, req.version(), body.size(), 
+                    "application/json"s);
+        });
     }
 
     Strand api_strand_;
-    int auto_counter_ = 0;
     app::Application app_;
 };
 
@@ -296,7 +329,7 @@ public:
                 try {
                     // Этот assert не выстрелит, так как лямбда-функция будет выполняться внутри strand
                     assert(self->api_handler_.api_strand_.running_in_this_thread());
-                    return send(self->api_handler_.MakeApiResponse(self->game_, req));
+                    return send(self->api_handler_.MakeApiResponse(req));
                 } catch (...) {
                     send(self->api_handler_.MakeErrorResponse(http::status::bad_request, 
                         "badRequest"sv, "Bad request"sv, req.version()));
