@@ -132,14 +132,14 @@ public:
             } else if(detail::IsMatched(target, "(/api/v1/game/tick)"s)){
                 res =  MakeIncreaseTimeResponse(req);
             }
-            res.insert("cache-Control"s, "no-cache"s);
+            res.insert("cache-control"s, "no-cache"s);
             return res;
         } else if(detail::IsMatched(target, "(/api/v1/player/).*"s)){
             StringResponse res;
             if(detail::IsMatched(target, "(/api/v1/player/action)"s)){
                 res = MakeActionResponse(req);
             }
-            res.insert("cache-Control"s, "no-cache"s);
+            res.insert("cache-control"s, "no-cache"s);
             return res;
         }
         return MakeErrorResponse(http::status::bad_request, "badRequest"sv, "Bad request"sv, req.version());
