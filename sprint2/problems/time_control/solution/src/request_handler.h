@@ -128,9 +128,7 @@ public:
                 return MakeGameStateResponse(req);
             } else if(detail::IsMatched(target, "(/api/v1/game/tick)"s)){
                 return MakeIncreaseTimeResponse(req);
-            } 
-        } else if(detail::IsMatched(target, "(/api/v1/player/).*"s)){
-            if(detail::IsMatched(target, "(/api/v1/player/action)"s)){
+            } else if(detail::IsMatched(target, "(/api/v1/game/player/action)"s)){
                 return MakeActionResponse(req);
             }
         }
@@ -294,7 +292,6 @@ private:
                         return MakeResponse(http::status::ok, body, req.version(), body.size(), 
                             "application/json"s);
                     } catch(std::exception& ex){
-                        std::cerr << ex.what() << std::endl;
                         return MakeErrorResponse(http::status::bad_request, 
                             "invalidArgument"sv, "Failed to parse tick request JSON"sv, req.version());
                     }
@@ -328,7 +325,6 @@ private:
                     }
 
                 } catch(std::exception& ex){
-                    std::cerr << ex.what() << std::endl;
                     auto res =  MakeErrorResponse(http::status::bad_request, 
                     "invalidArgument"sv, "Failed to parse action"sv, req.version());
                     return res;
