@@ -1,5 +1,4 @@
 #pragma once
-#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <map>
@@ -245,14 +244,6 @@ private:
     Offices offices_;
     double dog_speed_ = 0;
 };
-
-inline std::ostream& operator<<(std::ostream& out, const Road& road){
-    using namespace std::literals;    
-    out << road.GetStart().x << ", "sv << road.GetStart().y << 
-    " -- "sv << road.GetEnd().x << ", "sv << road.GetEnd().y << std::endl;
-
-    return out;
-}
 
 class GameSession{
 public:

@@ -205,7 +205,7 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
 
     Dog::PairDouble result_pos(getting_pos);
     Dog::PairDouble result_speed(getting_speed);
-    std::cout << roads.size() << std::endl;
+
     for(const Road* road : roads){
         Point start = road->GetStart();
         Point end = road->GetEnd();
