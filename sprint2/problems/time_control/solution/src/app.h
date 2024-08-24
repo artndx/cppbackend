@@ -115,7 +115,7 @@ class GetMapUseCase{
 public:
     static std::string MakeMapDescription(const model::Map* map);
 private:
-    static json::array GetRoadsInJSON(const model::Map::Roads& roads);
+    static json::array GetRoadsInJSON(const model::Map::Roads& all_roads);
     static json::array GetBuildingsInJSON(const model::Map::Buildings& buildings);
     static json::array GetOfficesInJSON(const model::Map::Offices& offices);
 };

@@ -82,22 +82,24 @@ std::string GetMapUseCase::MakeMapDescription(const model::Map* map){
 }
 
 
-json::array GetMapUseCase::GetRoadsInJSON(const model::Map::Roads& roads){
+json::array GetMapUseCase::GetRoadsInJSON(const model::Map::Roads& all_roads){
     json::array result;
 
-    for(const model::Road& road : roads){
-        json::object obj;
-        obj["x0"] = road.GetStart().x;
-        obj["y0"] = road.GetStart().y;
-        if(road.IsHorizontal()){
-            obj["x1"] = road.GetEnd().x;
-        } else if(road.IsVertical()){
-            obj["y1"] = road.GetEnd().y;
-        } else {
-            break;
-        }
+    for(const auto& [road_type, roads] : all_roads){
+        for(const auto& [coord, road] : roads){
+            json::object obj;
+            obj["x0"] = road.GetStart().x;
+            obj["y0"] = road.GetStart().y;
+            if(road.IsHorizontal()){
+                obj["x1"] = road.GetEnd().x;
+            } else if(road.IsVertical()){
+                obj["y1"] = road.GetEnd().y;
+            } else {
+                break;
+            }
 
-        result.push_back(obj);
+            result.push_back(obj); 
+        }
     }
 
     return result;
@@ -175,7 +177,7 @@ std::string GameUseCase::JoinGame(const std::string& user_name, const std::strin
 }
 
 Dog::PairDouble GameUseCase::GetFirstPos(const model::Map::Roads& roads) const{
-    const Point& pos = roads.begin()->GetStart();
+    const Point& pos = roads.at(model::Map::RoadTag::VERTICAL).begin()->second.GetStart();
     return {static_cast<double>(pos.x), static_cast<double>(pos.y)};
 }
 
@@ -184,8 +186,9 @@ Dog::PairDouble GameUseCase::GetRandomPos(const model::Map::Roads& roads) const{
         return a + rand()%(b-a);
     };
 
-    size_t road_index = random_num(0, roads.size());
-    const model::Road& road = roads[road_index];
+    model::Map::RoadTag tag = model::Map::RoadTag(random_num(0, 2));
+    size_t road_index = random_num(0, roads.at(tag).size());
+    const model::Road& road = std::next(roads.at(tag).begin(), road_index)->second;
     double x = 0;
     double y = 0;
     if(road.IsHorizontal()){

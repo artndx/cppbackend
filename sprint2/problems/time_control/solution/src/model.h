@@ -1,4 +1,5 @@
 #pragma once
+#include <iostream>
 #include <string>
 #include <unordered_map>
 #include <map>
@@ -73,6 +74,13 @@ public:
 
     Point GetEnd() const noexcept {
         return end_;
+    }
+
+    bool IsInvert() const noexcept{
+        if(start_.x > end_.x || start_.y > end_.y){
+            return true;
+        }
+        return false;
     }
 
 private:
@@ -179,7 +187,13 @@ private:
 class Map {
 public:
     using Id = util::Tagged<std::string, Map>;
-    using Roads = std::deque<Road>;
+    enum class RoadTag{
+        VERTICAL,
+        HORIZONTAl
+    };
+    using Roads = std::map<RoadTag, std::map<double, Road>>;
+    using RoadIt = std::map<double, Road>::iterator;
+    using ConstRoadIt = std::map<double, Road>::const_iterator;
     using Buildings = std::deque<Building>;
     using Offices = std::deque<Office>;
 
@@ -212,10 +226,6 @@ public:
 
 private:
     using OfficeIdToIndex = std::unordered_map<Office::Id, size_t, util::TaggedHasher<Office::Id>>;
-    using VerticalRoads = std::map<double, const Road*>;
-    using HorizontalRoads = std::map<double, const Road*>;
-    using RoadIt = std::map<double, const Road*>::iterator;
-    using ConstRoadIt = std::map<double, const Road*>::const_iterator;
 
 
     /* Обработка вертикальных дорог по x координате*/
@@ -229,18 +239,20 @@ private:
     Id id_;
     std::string name_;
     Roads roads_;
-    /* 
-        Словари для хранения указателей дорог для быстрого 
-        нахождения их по координатам
-    */
-    VerticalRoads v_roads_;
-    HorizontalRoads h_roads_;
     Buildings buildings_;
 
     OfficeIdToIndex warehouse_id_to_index_;
     Offices offices_;
     double dog_speed_ = 0;
 };
+
+inline std::ostream& operator<<(std::ostream& out, const Road& road){
+    using namespace std::literals;    
+    out << road.GetStart().x << ", "sv << road.GetStart().y << 
+    " -- "sv << road.GetEnd().x << ", "sv << road.GetEnd().y << std::endl;
+
+    return out;
+}
 
 class GameSession{
 public:
@@ -292,6 +304,10 @@ public:
     void UpdateGameState(double delta);
 private:
     void UpdateAllDogsPositions(std::deque<Dog>& dogs, const Map* map, double delta);
+
+    void UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double delta);
+
+    bool IsInsideRoad(const Dog::PairDouble& getting_pos, const Point& start, const Point& end) const;
 
     using MapIdHasher = util::TaggedHasher<Map::Id>;
     using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;

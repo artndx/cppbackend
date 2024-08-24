@@ -28,11 +28,10 @@ const Map::Offices& Map::GetOffices() const noexcept {
 }
 
 void Map::AddRoad(const Road& road) {
-    roads_.emplace_back(road);
     if(road.IsVertical()){
-        v_roads_.insert({road.GetStart().x, &roads_.back()});
+        roads_[Map::RoadTag::VERTICAL].emplace(road.GetStart().x, std::move(road));
     } else{
-        h_roads_.insert({road.GetStart().y, &roads_.back()});
+        roads_[Map::RoadTag::HORIZONTAl].emplace(road.GetStart().y, std::move(road));
     }
 }
 
@@ -74,52 +73,57 @@ double Map::GetDogSpeed() const{
 }
 
 void Map::FindInVerticals(const Dog::Position& pos, std::vector<const Road*>& roads) const{
-    ConstRoadIt it_x = v_roads_.lower_bound((*pos).x);          /* Ищем ближайшую дорогу по полученной координате */
+    const auto& v_roads = roads_.at(Map::RoadTag::VERTICAL);
+    ConstRoadIt it_x = v_roads.lower_bound((*pos).x);          /* Ищем ближайшую дорогу по полученной координате */
 
-    if(it_x != v_roads_.end()){                 
-        if(it_x != v_roads_.begin()){                   /* Если ближайшая дорога не является первой, то нужно проверить предыдущую */
+    if(it_x != v_roads.end()){                 
+        if(it_x != v_roads.begin()){                   /* Если ближайшая дорога не является первой, то нужно проверить предыдущую */
             ConstRoadIt prev_it_x = std::prev(it_x, 1);
             if(CheckBounds(prev_it_x, pos)){
-                roads.push_back(prev_it_x->second);
+                roads.push_back(&prev_it_x->second);
             }
         }
 
         if(CheckBounds(it_x, pos)){                     /* Проверяем ближайшую дорогу */
-            roads.push_back(it_x->second);
+            roads.push_back(&it_x->second);
         }
     } else {                                            /* Если дорога не найдена, то полученная координата дальше всех дорог*/
-        it_x = std::prev(v_roads_.end(), 1);            /* Тогда проверяем последнюю дорогу */
+        it_x = std::prev(v_roads.end(), 1);            /* Тогда проверяем последнюю дорогу */
         if(CheckBounds(it_x, pos)){
-            roads.push_back(it_x->second);
+            roads.push_back(&it_x->second);
         }
     }
 }
 
 void Map::FindInHorizontals(const Dog::Position& pos, std::vector<const Road*>& roads) const{
-    ConstRoadIt it_y = h_roads_.lower_bound((*pos).y);          /* Ищем ближайшую дорогу по полученной координате */
+    const auto& h_roads = roads_.at(Map::RoadTag::HORIZONTAl);
+    ConstRoadIt it_y = h_roads.lower_bound((*pos).y);          /* Ищем ближайшую дорогу по полученной координате */
 
-    if(it_y != h_roads_.end()){                 
-        if(it_y != h_roads_.begin()){                   /* Если ближайшая дорога не является первой, то нужно проверить предыдущую */
+    if(it_y != h_roads.end()){                 
+        if(it_y != h_roads.begin()){                   /* Если ближайшая дорога не является первой, то нужно проверить предыдущую */
             ConstRoadIt prev_it_y = std::prev(it_y, 1);
             if(CheckBounds(prev_it_y, pos)){
-                roads.push_back(prev_it_y->second);
+                roads.push_back(&prev_it_y->second);
             }
         }
 
         if(CheckBounds(it_y, pos)){                     /* Проверяем ближайшую дорогу */
-            roads.push_back(it_y->second);
+            roads.push_back(&it_y->second);
         }
     } else {                                            /* Если дорога не найдена, то полученная координата дальше всех дорог*/
-        it_y = std::prev(h_roads_.end(), 1);            /* Тогда проверяем последнюю дорогу */
+        it_y = std::prev(h_roads.end(), 1);            /* Тогда проверяем последнюю дорогу */
         if(CheckBounds(it_y, pos)){
-            roads.push_back(it_y->second);
+            roads.push_back(&it_y->second);
         }
     }
 }
 
 bool Map::CheckBounds(ConstRoadIt it, const Dog::Position& pos) const{
-    const auto& start = it->second->GetStart();
-    const auto& end = it->second->GetEnd();
+    Point start = it->second.GetStart();
+    Point end = it->second.GetEnd();
+    if(it->second.IsInvert()){
+        std::swap(start, end);
+    }
     return ((start.x - 0.4 <= (*pos).x && (*pos).x <= end.x + 0.4) && 
                 (start.y - 0.4 <= (*pos).y && (*pos).y <= end.y + 0.4));
 }
@@ -187,42 +191,68 @@ void Game::UpdateGameState(double delta){
 
 void Game::UpdateAllDogsPositions(std::deque<Dog>& dogs, const Map* map, double delta){
     for(Dog& dog : dogs){
-        auto roads = map->FindRoadsByCoords(dog.GetPosition());
-
-        const auto& [x, y] = *(dog.GetPosition());
-        const auto& [vx, vy] = *(dog.GetSpeed());
-
-        Dog::PairDouble new_pos({x + vx * delta, y + vy * delta});
-        Dog::PairDouble new_speed({vx, vy});
-
-
-        for(const Road* road : roads){
-            Point start = road->GetStart();
-            Point end = road->GetEnd();
-
-            if(new_pos.x <= start.x - 0.4){
-                new_pos.x = start.x - 0.4;
-                new_speed = {0, 0};
-            } else if(new_pos.x >= end.x + 0.4){
-                new_pos.x = end.x + 0.4;
-                new_speed = {0, 0};
-            }
-
-            if(new_pos.y <= start.y - 0.4){
-                new_pos.y = start.y - 0.4;
-                new_speed = {0, 0};
-            } else if(new_pos.y >= end.y + 0.4){
-                new_pos.y = end.y + 0.4;
-                new_speed = {0, 0};
-            }
-            
-            
-        } 
-        
-        dog.SetPosition(Dog::Position(new_pos));
-        dog.SetSpeed(Dog::Speed(new_speed));
+        std::vector<const Road*> roads = map->FindRoadsByCoords(dog.GetPosition());
+        UpdateDogPos(dog, roads, delta);
     }
-    
+}
+
+void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double delta){
+    const auto [x, y] = *(dog.GetPosition());
+    const auto [vx, vy] = *(dog.GetSpeed());
+
+    const Dog::PairDouble getting_pos({x + vx * delta, y + vy * delta});
+    const Dog::PairDouble getting_speed({vx, vy});
+
+    Dog::PairDouble result_pos(getting_pos);
+    Dog::PairDouble result_speed(getting_speed);
+    std::cout << roads.size() << std::endl;
+    for(const Road* road : roads){
+        Point start = road->GetStart();
+        Point end = road->GetEnd();
+
+        if(road->IsInvert()){
+            std::swap(start, end);
+        }
+
+        if(IsInsideRoad(getting_pos, start, end)){
+            dog.SetPosition(Dog::Position(getting_pos));
+            dog.SetSpeed(Dog::Speed(getting_speed));
+            return;
+        }
+
+        if(start.x - 0.4 >= getting_pos.x) {
+            result_pos.x = start.x - 0.4;
+            result_speed = {0,0};
+        } else if(getting_pos.x >= end.x + 0.4){
+            result_pos.x = end.x + 0.4;
+            result_speed = {0,0};
+        }
+
+        if(start.y - 0.4 >= getting_pos.y) {
+            result_pos.y = start.y - 0.4;
+            result_speed = {0,0};
+        } else if(getting_pos.y >= end.y + 0.4){
+            result_pos.y = end.y + 0.4;
+            result_speed = {0,0};
+        }
+
+        dog.SetPosition(Dog::Position(result_pos));
+        dog.SetSpeed(Dog::Speed(result_speed));
+    }
+}   
+
+bool Game::IsInsideRoad(const Dog::PairDouble& getting_pos, const Point& start, const Point& end) const{
+    if(start.x - 0.4 <= getting_pos.x) {
+        if(getting_pos.x <= end.x + 0.4) {
+            if(start.y - 0.4 <= getting_pos.y) {
+                if(getting_pos.y <= end.y + 0.4) {
+                    return true;
+                }
+            }
+        }
+    }
+
+    return false;
 }
 
 
