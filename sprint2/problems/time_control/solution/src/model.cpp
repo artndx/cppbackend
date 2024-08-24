@@ -1,6 +1,7 @@
 #include "model.h"
 
 #include <stdexcept>
+#include <set>
 
 namespace model {
 using namespace std::literals;
@@ -208,6 +209,8 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
     Dog::PairDouble result_pos(getting_pos);
     Dog::PairDouble result_speed(getting_speed);
 
+    std::set<Dog::PairDouble> collisions;
+
     for(const Road* road : roads){
         Point start = road->GetStart();
         Point end = road->GetEnd();
@@ -224,23 +227,26 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
 
         if(start.x - 0.4 >= getting_pos.x) {
             result_pos.x = start.x - 0.4;
-            result_speed = {0,0};
         } else if(getting_pos.x >= end.x + 0.4){
             result_pos.x = end.x + 0.4;
-            result_speed = {0,0};
         }
 
         if(start.y - 0.4 >= getting_pos.y) {
             result_pos.y = start.y - 0.4;
-            result_speed = {0,0};
         } else if(getting_pos.y >= end.y + 0.4){
             result_pos.y = end.y + 0.4;
-            result_speed = {0,0};
         }
 
-        dog.SetPosition(Dog::Position(result_pos));
-        dog.SetSpeed(Dog::Speed(result_speed));
+        collisions.insert(result_pos);
     }
+
+    if(collisions.size() != 0){
+        result_pos = *(std::prev(collisions.end(), 1));
+        result_speed = {0,0};
+    }
+    
+    dog.SetPosition(Dog::Position(result_pos));
+    dog.SetSpeed(Dog::Speed(result_speed));
 }   
 
 bool Game::IsInsideRoad(const Dog::PairDouble& getting_pos, const Point& start, const Point& end) const{

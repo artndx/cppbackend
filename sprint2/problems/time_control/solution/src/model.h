@@ -183,6 +183,10 @@ private:
     Direction dir_;
 };
 
+inline bool operator<(const Dog::PairDouble& lhs, const Dog::PairDouble& rhs){
+    return std::tuple(lhs.x, lhs.y) < std::tuple(rhs.x, rhs.x);
+}
+
 class Map {
 public:
     using Id = util::Tagged<std::string, Map>;
