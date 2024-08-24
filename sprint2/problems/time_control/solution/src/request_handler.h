@@ -114,37 +114,37 @@ class ApiHandler : public BaseHandler{
 public:
     template<typename Request>
     StringResponse MakeApiResponse(Request&& req){
-        DumpRequest(req);
         std::string target = std::string(req.target());
         if(detail::IsMatched(target, "(/api/v1/maps)"s)){
             return MakeMapsListsResponse(req.version());
         } else if(detail::IsMatched(target, "(/api/v1/maps/).+"s)) {
             return MakeMapDescResponse(target, req.version());
         } else if(detail::IsMatched(target, "(/api/v1/game/).*"s)){
-            StringResponse res;
             if(detail::IsMatched(target, "(/api/v1/game/join)"s)){
-                res = MakeAuthResponse(req);
+                StringResponse res =  MakeAuthResponse(req);
+                res.insert("Cache-Control"s, "no-cache"s);
+                return res;
             } else if(detail::IsMatched(target, "(/api/v1/game/players)"s)) {
-                res =  MakePlayerListResponse(req);
+                StringResponse res =  MakePlayerListResponse(req);
+                res.insert("Cache-Control"s, "no-cache"s);
+                return res;
             } else if(detail::IsMatched(target, "(/api/v1/game/state)"s)) {
-                res =  MakeGameStateResponse(req);
+                StringResponse res = MakeGameStateResponse(req);
+                res.insert("Cache-Control"s, "no-cache"s);
+                return res;
             } else if(detail::IsMatched(target, "(/api/v1/game/tick)"s)){
-                res =  MakeIncreaseTimeResponse(req);
-            }
-            res.insert("Cache-Control"s, "no-cache"s);
-            DumpResponse(res);
-            return res;
+                StringResponse res = MakeIncreaseTimeResponse(req);
+                res.insert("Cache-Control"s, "no-cache"s);
+                return res;
+            } 
         } else if(detail::IsMatched(target, "(/api/v1/player/).*"s)){
-            StringResponse res;
             if(detail::IsMatched(target, "(/api/v1/player/action)"s)){
-                res = MakeActionResponse(req);
+                StringResponse res = MakeActionResponse(req);
+                res.insert("Cache-Control"s, "no-cache"s);
+                return res;
             }
-            res.insert("Cache-Control"s, "no-cache"s);
-            DumpResponse(res);
-            return res;
         }
         auto res = MakeErrorResponse(http::status::bad_request, "badRequest"sv, "Bad request"sv, req.version());
-        DumpResponse(res);
         return res;
     }
 private:
