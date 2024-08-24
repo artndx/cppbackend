@@ -20,7 +20,7 @@ namespace http = beast::http;
 
 inline void ReportError(beast::error_code ec, std::string_view what){
     using namespace std::literals;
-    std::cerr << what << ": "sv << ec.message() << std::endl;
+    LOG_ERROR(ec.value(), ec.message(), what);
 }
 
 class SessionBase {

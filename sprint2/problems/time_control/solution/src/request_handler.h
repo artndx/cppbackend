@@ -114,7 +114,7 @@ class ApiHandler : public BaseHandler{
 public:
     template<typename Request>
     StringResponse MakeApiResponse(Request&& req){
-        
+        DumpRequest(req);
         std::string target = std::string(req.target());
         if(detail::IsMatched(target, "(/api/v1/maps)"s)){
             return MakeMapsListsResponse(req.version());
@@ -123,8 +123,7 @@ public:
         } else if(detail::IsMatched(target, "(/api/v1/game/).*"s)){
             StringResponse res;
             if(detail::IsMatched(target, "(/api/v1/game/join)"s)){
-                SetMethods available_methods("POST");
-                res = MakeAuthResponse(available_methods, req);
+                res = MakeAuthResponse(req);
             } else if(detail::IsMatched(target, "(/api/v1/game/players)"s)) {
                 res =  MakePlayerListResponse(req);
             } else if(detail::IsMatched(target, "(/api/v1/game/state)"s)) {
@@ -133,6 +132,7 @@ public:
                 res =  MakeIncreaseTimeResponse(req);
             }
             res.insert("Cache-Control"s, "no-cache"s);
+            DumpResponse(res);
             return res;
         } else if(detail::IsMatched(target, "(/api/v1/player/).*"s)){
             StringResponse res;
@@ -140,13 +140,43 @@ public:
                 res = MakeActionResponse(req);
             }
             res.insert("Cache-Control"s, "no-cache"s);
+            DumpResponse(res);
             return res;
         }
-        return MakeErrorResponse(http::status::bad_request, "badRequest"sv, "Bad request"sv, req.version());
+        auto res = MakeErrorResponse(http::status::bad_request, "badRequest"sv, "Bad request"sv, req.version());
+        DumpResponse(res);
+        return res;
     }
 private:
     explicit ApiHandler(model::Game& game, Strand api_strand)
         : app_(game), api_strand_{api_strand}{
+    }
+
+    template<typename Request>
+    void DumpRequest(const Request& req){
+        std::cout << "HTTP/1.1 "
+        << req.method_string() << ' ' 
+        << req.target() << std::endl;
+
+        // Выводим заголовки запроса
+        for (const auto& header : req) {
+            std::cout << "  "sv << header.name_string() << ": "sv << header.value() << std::endl;
+        }
+
+        std::cout << " "sv << req.body() << std::endl;
+    }
+
+    template<typename Response>
+    void DumpResponse(const Response& res){
+        std::cout << "HTTP/1.1 "
+        << res.result() << std::endl;
+
+        // Выводим заголовки ответа
+        for (const auto& header : res) {
+            std::cout << "  "sv << header.name_string() << ": "sv << header.value() << std::endl;
+        }   
+
+        std::cout << " "sv << res.body() << std::endl;
     }
 
     StringResponse MakeMapsListsResponse(unsigned version);
@@ -154,7 +184,8 @@ private:
     StringResponse MakeMapDescResponse(const std::string& req_target, unsigned req_version);
 
     template<typename Request>
-    StringResponse MakeAuthResponse(const SetMethods& methods, Request&& req){
+    StringResponse MakeAuthResponse(Request&& req){
+        SetMethods methods("POST");
         std::string method = std::string(req.method_string());
         if(methods.IsSame(method)){
             if(req.at(http::field::content_type) == "application/json"sv){
