@@ -161,6 +161,10 @@ public:
         return speed_;
     }
 
+    void SetDirection(model::Direction dir){
+        dir_ = dir;
+    }
+
     Direction GetDirection() const{
         return dir_;
     }

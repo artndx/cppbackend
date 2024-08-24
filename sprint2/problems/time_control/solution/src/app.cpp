@@ -240,18 +240,24 @@ std::string GameUseCase::GetGameState() const{
 std::string GameUseCase::SetAction(const json::object& action, const Token& token){
     Player* player = tokens_.FindPlayerByToken(token);
     double dog_speed = player->GetSession()->GetMap()->GetDogSpeed();
+    model::Direction new_dir;
     model::Dog::Speed new_speed({0, 0});    
     std::string dir = std::string(action.at("move").as_string());
     if(dir == "U"){
         new_speed = model::Dog::Speed({0, -dog_speed});
+        new_dir = model::Direction::NORTH;
     } else if(dir == "D"){
         new_speed = model::Dog::Speed({0, dog_speed});
+        new_dir = model::Direction::SOUTH;
     } else if(dir == "L"){
         new_speed = model::Dog::Speed({-dog_speed, 0});
+        new_dir = model::Direction::WEST;
     } else if(dir == "R"){
         new_speed = model::Dog::Speed({dog_speed, 0});
+        new_dir = model::Direction::EAST;
     }
     player->GetDog()->SetSpeed(new_speed);
+    player->GetDog()->SetDirection(new_dir);
     return "{}";
 }
 
