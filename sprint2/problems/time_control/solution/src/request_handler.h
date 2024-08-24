@@ -121,27 +121,17 @@ public:
             return MakeMapDescResponse(target, req.version());
         } else if(detail::IsMatched(target, "(/api/v1/game/).*"s)){
             if(detail::IsMatched(target, "(/api/v1/game/join)"s)){
-                StringResponse res =  MakeAuthResponse(req);
-                res.insert("Cache-Control"s, "no-cache"s);
-                return res;
+                return MakeAuthResponse(req);
             } else if(detail::IsMatched(target, "(/api/v1/game/players)"s)) {
-                StringResponse res =  MakePlayerListResponse(req);
-                res.insert("Cache-Control"s, "no-cache"s);
-                return res;
+                return MakePlayerListResponse(req);
             } else if(detail::IsMatched(target, "(/api/v1/game/state)"s)) {
-                StringResponse res = MakeGameStateResponse(req);
-                res.insert("Cache-Control"s, "no-cache"s);
-                return res;
+                return MakeGameStateResponse(req);
             } else if(detail::IsMatched(target, "(/api/v1/game/tick)"s)){
-                StringResponse res = MakeIncreaseTimeResponse(req);
-                res.insert("Cache-Control"s, "no-cache"s);
-                return res;
+                return MakeIncreaseTimeResponse(req);
             } 
         } else if(detail::IsMatched(target, "(/api/v1/player/).*"s)){
             if(detail::IsMatched(target, "(/api/v1/player/action)"s)){
-                StringResponse res = MakeActionResponse(req);
-                res.insert("Cache-Control"s, "no-cache"s);
-                return res;
+                return MakeActionResponse(req);
             }
         }
         auto res = MakeErrorResponse(http::status::bad_request, "badRequest"sv, "Bad request"sv, req.version());

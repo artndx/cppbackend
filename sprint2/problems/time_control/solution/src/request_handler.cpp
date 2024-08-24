@@ -71,6 +71,7 @@ StringResponse BaseHandler::MakeResponse(http::status status, std::string_view b
     StringResponse response(status, http_version);
 
     response.set(http::field::content_type, content_type);
+    response.set(http::field::cache_control, "no-cache"s);
     response.body() = body;
     response.content_length(content_length);
     return response;
