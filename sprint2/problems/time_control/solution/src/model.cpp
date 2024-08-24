@@ -29,10 +29,12 @@ const Map::Offices& Map::GetOffices() const noexcept {
 
 void Map::AddRoad(const Road& road) {
     if(road.IsVertical()){
-        roads_[Map::RoadTag::VERTICAL].emplace(road.GetStart().x, std::move(road));
+        road_map_[Map::RoadTag::VERTICAL].emplace(road.GetStart().x, std::move(road));
     } else{
-        roads_[Map::RoadTag::HORIZONTAl].emplace(road.GetStart().y, std::move(road));
+        road_map_[Map::RoadTag::HORIZONTAl].emplace(road.GetStart().y, std::move(road));
     }
+
+    roads_.emplace_back(road);
 }
 
 std::vector<const Road*> Map::FindRoadsByCoords(const Dog::Position& pos) const{
@@ -73,7 +75,7 @@ double Map::GetDogSpeed() const{
 }
 
 void Map::FindInVerticals(const Dog::Position& pos, std::vector<const Road*>& roads) const{
-    const auto& v_roads = roads_.at(Map::RoadTag::VERTICAL);
+    const auto& v_roads = road_map_.at(Map::RoadTag::VERTICAL);
     ConstRoadIt it_x = v_roads.lower_bound((*pos).x);          /* Ищем ближайшую дорогу по полученной координате */
 
     if(it_x != v_roads.end()){                 
@@ -96,7 +98,7 @@ void Map::FindInVerticals(const Dog::Position& pos, std::vector<const Road*>& ro
 }
 
 void Map::FindInHorizontals(const Dog::Position& pos, std::vector<const Road*>& roads) const{
-    const auto& h_roads = roads_.at(Map::RoadTag::HORIZONTAl);
+    const auto& h_roads = road_map_.at(Map::RoadTag::HORIZONTAl);
     ConstRoadIt it_y = h_roads.lower_bound((*pos).y);          /* Ищем ближайшую дорогу по полученной координате */
 
     if(it_y != h_roads.end()){                 

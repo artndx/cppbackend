@@ -190,7 +190,8 @@ public:
         VERTICAL,
         HORIZONTAl
     };
-    using Roads = std::map<RoadTag, std::map<double, Road>>;
+    using RoadMap = std::map<RoadTag, std::map<double, Road>>;
+    using Roads = std::deque<Road>;
     using RoadIt = std::map<double, Road>::iterator;
     using ConstRoadIt = std::map<double, Road>::const_iterator;
     using Buildings = std::deque<Building>;
@@ -238,6 +239,7 @@ private:
     Id id_;
     std::string name_;
     Roads roads_;
+    RoadMap road_map_;
     Buildings buildings_;
 
     OfficeIdToIndex warehouse_id_to_index_;
