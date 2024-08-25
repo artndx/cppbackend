@@ -77,7 +77,7 @@ void AddMaps(const json::array& json_maps, Game& game){
         AddRoadsFromJson(json_map, map);
         AddBuildingsFromJson(json_map, map);
         AddOfficesFromJson(json_map, map);
-        game.AddMap(map);
+        game.AddMap(std::move(map));
     }
 }
 

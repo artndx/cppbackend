@@ -4,6 +4,7 @@
 #include <map>
 #include <vector>
 #include <deque>
+#include <iostream>
 
 #include "tagged.h"
 
@@ -86,6 +87,12 @@ private:
     Point start_;
     Point end_;
 };
+
+inline std::ostream& operator<<(std::ostream& out, const Road& road){
+    out << road.GetStart().x << ", " << road.GetStart().y
+    << " -- " << road.GetEnd().x << ", " << road.GetEnd().y;
+    return out;
+}
 
 class Building {
 public:
@@ -194,10 +201,10 @@ public:
         VERTICAL,
         HORIZONTAl
     };
-    using RoadMap = std::map<RoadTag, std::map<double, Road>>;
     using Roads = std::deque<Road>;
-    using RoadIt = std::map<double, Road>::iterator;
-    using ConstRoadIt = std::map<double, Road>::const_iterator;
+    using RoadMap = std::map<RoadTag, std::map<double, const Road&>>;
+    using RoadIt = std::map<double, const Road&>::iterator;
+    using ConstRoadIt = std::map<double, const Road&>::const_iterator;
     using Buildings = std::deque<Building>;
     using Offices = std::deque<Office>;
 
@@ -282,9 +289,9 @@ private:
 
 class Game {
 public:
-    using Maps = std::vector<Map>;
+    using Maps = std::deque<Map>;
 
-    void AddMap(Map map);
+    void AddMap(Map&& map);
 
     GameSession* AddSession(const Map::Id& map);
 

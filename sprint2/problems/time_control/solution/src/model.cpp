@@ -29,18 +29,17 @@ const Map::Offices& Map::GetOffices() const noexcept {
 }
 
 void Map::AddRoad(const Road& road) {
-    if(road.IsVertical()){
-        road_map_[Map::RoadTag::VERTICAL].emplace(road.GetStart().x, std::move(road));
-    } else{
-        road_map_[Map::RoadTag::HORIZONTAl].emplace(road.GetStart().y, std::move(road));
-    }
+    const Road& added_road = roads_.emplace_back(road);
 
-    roads_.emplace_back(road);
+    if(added_road.IsVertical()){
+        road_map_[Map::RoadTag::VERTICAL].insert({road.GetStart().x, added_road});
+    } else{
+        road_map_[Map::RoadTag::HORIZONTAl].insert({road.GetStart().y, added_road});
+    }
 }
 
 std::vector<const Road*> Map::FindRoadsByCoords(const Dog::Position& pos) const{
     std::vector<const Road*> result;
-
     FindInVerticals(pos, result);
     FindInHorizontals(pos, result);
 
@@ -133,7 +132,7 @@ bool Map::CheckBounds(ConstRoadIt it, const Dog::Position& pos) const{
 
 /* ------------------------ Game ----------------------------------- */
 
-void Game::AddMap(Map map) {
+void Game::AddMap(Map&& map) {
     const size_t index = maps_.size();
     if (auto [it, inserted] = map_id_to_index_.emplace(map.GetId(), index); !inserted) {
         throw std::invalid_argument("Map with id "s + *map.GetId() + " already exists"s);
