@@ -132,8 +132,8 @@ public:
     GameUseCase(app::Players& players, app::PlayerTokens& tokens)
         : players_(players), tokens_(tokens){}
 
-    std::string JoinGame(const std::string& user_name, 
-                            const std::string& str_map_id, model::Game& game);
+    std::string JoinGame(const std::string& user_name, const std::string& str_map_id, 
+                            model::Game& game, bool random_spawn);
 
     std::string GetGameState() const;
 
@@ -141,8 +141,8 @@ public:
 
     std::string IncreaseTime(double delta, model::Game& game);
 private:
-    Dog::PairDouble GetFirstPos(const model::Map::Roads& roads) const;
-    Dog::PairDouble GetRandomPos(const model::Map::Roads& roads) const;
+    model::Dog::Position GetFirstPos(const model::Map::Roads& roads) const;
+    model::Dog::Position GetRandomPos(const model::Map::Roads& roads) const;
     int auto_counter_ = 0;
     app::Players& players_;
     app::PlayerTokens& tokens_;
@@ -156,9 +156,9 @@ public:
 
 class Application{
 public:
-    Application(model::Game& game, std::optional<double> tick_period, bool randomize_spawn_points)
+    Application(model::Game& game, bool periodic_mode, bool randomize_spawn_points)
         : 
-        game_(game), tick_period_(tick_period), 
+        game_(game), periodic_mode_(periodic_mode), 
         rand_spawn_(randomize_spawn_points), players_(), tokens_(), 
         game_handler_(players_, tokens_){}
 
@@ -175,7 +175,7 @@ public:
     }
 
     bool IsPeriodicMode() const{
-        return tick_period_.has_value();
+        return periodic_mode_;
     }
 
     std::string GetMapDescription(const model::Map* map){
@@ -183,7 +183,7 @@ public:
     }
 
     std::string GetJoinGameResult(const std::string& user_name, const std::string& map_id){
-        return game_handler_.JoinGame(user_name, map_id, game_);
+        return game_handler_.JoinGame(user_name, map_id, game_, rand_spawn_);
     }
 
     std::string GetPlayerList(){
@@ -203,7 +203,7 @@ public:
     }
 private:
     model::Game& game_;
-    std::optional<double> tick_period_;
+    bool periodic_mode_;
     bool rand_spawn_;
     Players players_;
     PlayerTokens tokens_; 

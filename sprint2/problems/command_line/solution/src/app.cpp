@@ -151,7 +151,7 @@ std::string ListMapsUseCase::MakeMapsList(const model::Game::Maps& maps){
 
 /* ------------------------ GameUseCase ----------------------------------- */
 
-std::string GameUseCase::JoinGame(const std::string& user_name, const std::string& str_map_id, model::Game& game){
+std::string GameUseCase::JoinGame(const std::string& user_name, const std::string& str_map_id, model::Game& game, bool random_spawn){
     using namespace std::literals;
     model::Map::Id map_id(str_map_id);
 
@@ -159,10 +159,14 @@ std::string GameUseCase::JoinGame(const std::string& user_name, const std::strin
     if(session == nullptr){
         session = game.AddSession(map_id);
     }
-    model::Dog* dog = session->AddDog(auto_counter_, model::Dog::Name(user_name),
-                                            model::Dog::Position(GetFirstPos(game.FindMap(map_id)->GetRoads())), 
-                                            model::Dog::Speed({0,0}),
-                                            model::Direction::NORTH);
+
+    model::Dog::Name dog_name(user_name);
+    model::Dog::Position dog_pos = (random_spawn) ? GetRandomPos(game.FindMap(map_id)->GetRoads()) : GetFirstPos(game.FindMap(map_id)->GetRoads());
+    model::Dog::Speed dog_speed({0, 0});
+    model::Direction dog_dir = model::Direction::NORTH;
+
+    model::Dog* dog = session->AddDog(auto_counter_, dog_name, dog_pos, 
+                                        dog_speed, dog_dir);
     app::Player& player = players_.Add(auto_counter_, app::Player::Name(user_name), dog, session);
     ++auto_counter_;
 
@@ -175,12 +179,12 @@ std::string GameUseCase::JoinGame(const std::string& user_name, const std::strin
     return json::serialize(json_body);   
 }
 
-Dog::PairDouble GameUseCase::GetFirstPos(const model::Map::Roads& roads) const{
+ model::Dog::Position GameUseCase::GetFirstPos(const model::Map::Roads& roads) const{
     const Point& pos = roads.begin()->GetStart();
-    return {static_cast<double>(pos.x), static_cast<double>(pos.y)};
+    return model::Dog::Position({static_cast<double>(pos.x), static_cast<double>(pos.y)});
 }
 
-Dog::PairDouble GameUseCase::GetRandomPos(const model::Map::Roads& roads) const{
+ model::Dog::Position GameUseCase::GetRandomPos(const model::Map::Roads& roads) const{
     auto random_num = [](int a, int b){
         return a + rand()%(b-a);
     };
@@ -197,7 +201,7 @@ Dog::PairDouble GameUseCase::GetRandomPos(const model::Map::Roads& roads) const{
         x = road.GetStart().x;
         y = random_num(road.GetStart().y, road.GetEnd().y);
     }
-    return {x,y};
+    return model::Dog::Position({x,y});
 }
 
 std::string GameUseCase::GetGameState() const{
