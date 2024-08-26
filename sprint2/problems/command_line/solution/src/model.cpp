@@ -248,18 +248,13 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
     dog.SetSpeed(Dog::Speed(result_speed));
 }   
 
-bool Game::IsInsideRoad(const Dog::PairDouble& getting_pos, const Point& start, const Point& end) const{
-    if(start.x - 0.4 <= getting_pos.x) {
-        if(getting_pos.x <= end.x + 0.4) {
-            if(start.y - 0.4 <= getting_pos.y) {
-                if(getting_pos.y <= end.y + 0.4) {
-                    return true;
-                }
-            }
-        }
-    }
+bool Game::IsInsideRoad(const Dog::PairDouble& getting_pos, const Point& start, const Point& end){
+    bool in_left_border = getting_pos.x >= start.x - road_offset_;
+    bool in_right_border = getting_pos.x <= end.x + road_offset_;
+    bool in_upper_border = getting_pos.y >= start.y - road_offset_;
+    bool in_lower_border = getting_pos.y <= end.y + road_offset_;
 
-    return false;
+    return in_left_border && in_right_border && in_upper_border && in_lower_border;
 }
 
 

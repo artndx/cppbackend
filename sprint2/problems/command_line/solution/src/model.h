@@ -260,7 +260,7 @@ private:
 
 class GameSession{
 public:
-    GameSession(const Map* map)
+    explicit GameSession(const Map* map)
         : map_(map){
     }
 
@@ -311,7 +311,7 @@ private:
 
     void UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double delta);
 
-    bool IsInsideRoad(const Dog::PairDouble& getting_pos, const Point& start, const Point& end) const;
+    static bool IsInsideRoad(const Dog::PairDouble& getting_pos, const Point& start, const Point& end);
 
     using MapIdHasher = util::TaggedHasher<Map::Id>;
     using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
@@ -321,6 +321,7 @@ private:
     SessionsByMapId map_id_to_sessions_;
     MapIdToIndex map_id_to_index_;
     double default_dog_speed_ = 1.0;
+    static constexpr double road_offset_ = 0.4;
 };
 
 }  // namespace model

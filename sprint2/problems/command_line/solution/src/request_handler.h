@@ -271,7 +271,7 @@ private:
             try{
                 if(it != req.end()){
                     std::string_view req_token = it->value();
-                    app::Token token(std::string(req_token.substr(7, req_token.npos)));
+                    model::Token token(std::string(req_token.substr(7, req_token.npos)));
                     if((*token).size() != 32){
                         throw std::logic_error("Incorrect token");
                     }
@@ -301,7 +301,7 @@ private:
     template<typename Request>
     StringResponse MakePlayerListResponse(Request&& req){
         SetMethods available_methods("GET", "HEAD");
-        return ExecuteAuthorized(available_methods, req, [this](Request&& req, [[maybe_unused]] const app::Token& token){
+        return ExecuteAuthorized(available_methods, req, [this](Request&& req, [[maybe_unused]] const model::Token& token){
                 std::string body = this->app_.GetPlayerList();
                 return this->MakeResponse(http::status::ok, body, req.version(), body.size(), 
                     "application/json"s);
@@ -311,7 +311,7 @@ private:
     template<typename Request>
     StringResponse MakeGameStateResponse(Request&& req){
         SetMethods available_methods("GET", "HEAD");
-        return ExecuteAuthorized(available_methods, req, [this](Request&& req, [[maybe_unused]] const app::Token& token){
+        return ExecuteAuthorized(available_methods, req, [this](Request&& req, [[maybe_unused]] const model::Token& token){
                 std::string body = this->app_.GetGameState();
                 return this->MakeResponse(http::status::ok, body, req.version(), body.size(), 
                     "application/json"s);
@@ -360,7 +360,7 @@ private:
                     if(auto it = action.find("move"); it != action.end()){
                         /* Запрос без ошибок */
                         SetMethods available_methods("POST");
-                        return ExecuteAuthorized(available_methods, req, [this, &action](Request&& req, [[maybe_unused]] const app::Token& token){
+                        return ExecuteAuthorized(available_methods, req, [this, &action](Request&& req, [[maybe_unused]] const model::Token& token){
                             std::string body = this->app_.ApplyPlayerAction(action, token);
                             return this->MakeResponse(http::status::ok, body, req.version(), body.size(), 
                             "application/json"s);
@@ -435,8 +435,9 @@ private:
 class RequestHandler : public std::enable_shared_from_this<RequestHandler>{
 public:
     explicit RequestHandler(model::Game& game, const cmd_parser::Args& args, Strand api_strand)
-        : game_{game}, file_handler_(args.www_root), api_handler_{game, api_strand, args.tick_period, args.randomize_spawn_points}{
-    }
+        : game_{game}, 
+        api_handler_{game, api_strand, args.tick_period, args.randomize_spawn_points},
+        file_handler_{args.www_root}{}
 
     RequestHandler(const RequestHandler&) = delete;
     RequestHandler& operator=(const RequestHandler&) = delete;

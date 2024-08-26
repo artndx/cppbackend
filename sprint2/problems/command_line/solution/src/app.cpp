@@ -5,68 +5,6 @@
 
 namespace app{
 
-/* ------------------------ Players ----------------------------------- */
-
-size_t Players::DogMapKeyHasher::operator()(const DogMapKey& value) const{
-    size_t h1 = static_cast<size_t>(value.first);
-    size_t h2 = util::TaggedHasher<Map::Id>()(value.second);
-
-    return h1 * 37 + h2 * 37 * 37;
-}
-
-Player& Players::Add(int id, const Player::Name& name, Dog* dog, const GameSession* session){
-    DogMapKey key = std::make_pair(dog->GetId(), session->GetMap()->GetId());
-    Player player(id, name, dog, session);
-    auto [it, is_emplaced] = players_.emplace(key, player);
-    if(is_emplaced){
-        return it->second;
-    }
-
-    throw std::logic_error("Player has already been added");
-}
-
-const Player* Players::FindByDogIdAndMapId(int dog_id, std::string map_id) const{
-    try{
-        return &players_.at(DogMapKey(std::make_pair(dog_id, map_id)));
-    } catch(...){
-        return nullptr;
-    }
-}
-
-const Players::PlayerList& Players::GetPlayers() const{
-    return players_;
-}
-
-/* ---------------------- PlayerTokens ------------------------------------- */
-
-Token PlayerTokens::AddPlayer(Player& player){
-    auto [it, is_emplaced] = token_to_player_.emplace(GenerateToken(), &player);
-    if(is_emplaced){
-        return it->first;
-    }
-
-    throw std::logic_error("Player with this token has already been added");
-}
-
-Player* PlayerTokens::FindPlayerByToken(const Token& token){
-    try{
-        return token_to_player_.at(token);
-    } catch(...){
-        return nullptr;
-    }
-}
-
-const Player* PlayerTokens::FindPlayerByToken(const Token& token) const{
-    return static_cast<const Player*>(FindPlayerByToken(token));
-}
-
-Token PlayerTokens::GenerateToken() {
-    std::ostringstream out;
-    out << std::hex << std::setw(16) << std::setfill('0') << generator1_();
-    out << std::hex << std::setw(16) << std::setfill('0') << generator2_();
-    return Token(out.str());
-}
-
 /* ------------------------ GetMapUseCase ----------------------------------- */
 
 std::string GetMapUseCase::MakeMapDescription(const model::Map* map){
@@ -151,7 +89,8 @@ std::string ListMapsUseCase::MakeMapsList(const model::Game::Maps& maps){
 
 /* ------------------------ GameUseCase ----------------------------------- */
 
-std::string GameUseCase::JoinGame(const std::string& user_name, const std::string& str_map_id, model::Game& game, bool random_spawn){
+std::string GameUseCase::JoinGame(const std::string& user_name, const std::string& str_map_id, 
+                        model::Game& game, bool random_spawn){
     using namespace std::literals;
     model::Map::Id map_id(str_map_id);
 
@@ -167,10 +106,11 @@ std::string GameUseCase::JoinGame(const std::string& user_name, const std::strin
 
     model::Dog* dog = session->AddDog(auto_counter_, dog_name, dog_pos, 
                                         dog_speed, dog_dir);
-    app::Player& player = players_.Add(auto_counter_, app::Player::Name(user_name), dog, session);
+    model::Player& player = players_.Add(auto_counter_, model::Player::Name(user_name), 
+                                        dog, session);
     ++auto_counter_;
 
-    app::Token token = tokens_.AddPlayer(player);
+    model::Token token = tokens_.AddPlayer(player);
     
     json::object json_body;
     json_body["authToken"] = *token;
@@ -243,8 +183,8 @@ std::string GameUseCase::GetGameState() const{
     return json::serialize(result);
 }
 
-std::string GameUseCase::SetAction(const json::object& action, const Token& token){
-    Player* player = tokens_.FindPlayerByToken(token);
+std::string GameUseCase::SetAction(const json::object& action, const model::Token& token){
+    model::Player* player = tokens_.FindPlayerByToken(token);
     double dog_speed = player->GetSession()->GetMap()->GetDogSpeed();
     model::Direction new_dir;
     model::Dog::Speed new_speed({0, 0});    

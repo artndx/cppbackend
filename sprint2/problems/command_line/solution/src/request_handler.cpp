@@ -1,14 +1,16 @@
 #include "request_handler.h"
+#include <algorithm>
 
 namespace request_handler {
 
 namespace detail{
 
-std::string ToLower(std::string str){
+std::string ToLower(std::string_view str){
     std::string result;
-    for(char c : str){
-        result.push_back(std::tolower(c));
-    }
+    result.resize(str.size());
+    std::transform(str.begin(), str.end(), result.begin(), [](char c){
+        return std::tolower(c);
+    });
 
     return result;
 }
@@ -90,10 +92,7 @@ void Ticker::OnTick(sys::error_code ec) {
         auto this_tick = Clock::now();
         auto delta = duration_cast<milliseconds>(this_tick - last_tick_);
         last_tick_ = this_tick;
-        try {
-            handler_(delta);
-        } catch (...) {
-        }
+        handler_(delta);
         ScheduleTick();
     }
 }
@@ -152,7 +151,7 @@ std::string FileHandler::GetRequiredContentType(std::string_view req_target){
     auto point = req_target.find_last_of('.');
     std::string extension;
     if(point != req_target.npos){
-        extension = detail::ToLower(std::string(req_target.substr(point, req_target.npos)));
+        extension = detail::ToLower(req_target.substr(point, req_target.npos));
     }        
     if(detail::FILES_EXTENSIONS.count(extension)){
         return detail::FILES_EXTENSIONS.at(extension);
