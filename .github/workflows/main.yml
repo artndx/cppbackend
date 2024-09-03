@@ -173,17 +173,22 @@ jobs:
 
 #      - run: chmod +x ${GITHUB_WORKSPACE}/sprint1/problems/map_json/solution/build/bin/game_server
 
-      - name: Load FlameGraph
-        uses: actions/checkout@v3
-        with:
-          repository: 'brendangregg/FlameGraph'
-          path: ${{ github.workspace }}/sprint3/problems/flamegraph/solution/FlameGraph
+      # - name: Load FlameGraph
+      #   uses: actions/checkout@v3
+      #   with:
+      #     repository: 'brendangregg/FlameGraph'
+      #     path: ${{ github.workspace }}/sprint3/problems/flamegraph/solution/FlameGraph
 
-      - name: run tests sprint3 flamegraph
+      # - name: run tests sprint3 flamegraph
+      #   run: |
+      #     ./cpp-backend-tests-practicum/scripts/sprint1/map_json/build.sh
+      #     cd cpp-backend-tests-practicum/scripts/sprint3
+      #     ./flamegraph/run.sh
+
+      - name: run tests sprint3 ammo
         run: |
-          ./cpp-backend-tests-practicum/scripts/sprint1/map_json/build.sh
           cd cpp-backend-tests-practicum/scripts/sprint3
-          ./flamegraph/run.sh
+          ./ammo/run.sh
 
       - name: run tests sprint3 gen_objects
         run: |
@@ -240,11 +245,6 @@ jobs:
         run: |
           cd cpp-backend-tests-practicum/scripts/sprint3
           ./scores/run.sh
-
-      - name: run tests sprint3 ammo
-        run: |
-          cd cpp-backend-tests-practicum/scripts/sprint3
-          ./ammo/run.sh
 
       - name: run tests sprint3 load
         run: |
