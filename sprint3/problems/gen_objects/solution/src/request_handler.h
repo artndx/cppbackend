@@ -217,7 +217,7 @@ private:
     StringResponse MakeMapsListsResponse(Request&& req){
         using namespace std::literals;
 
-        SetMethods methods("GET");
+        SetMethods methods("GET", "HEAD");
         std::string method = std::string(req.method_string());
         if(methods.IsSame(method)){
             std::string body = app_.GetMapsList();
@@ -239,7 +239,7 @@ private:
     StringResponse MakeMapDescResponse(Request&& req){
         using namespace std::literals;
 
-        SetMethods methods("GET");
+        SetMethods methods("GET", "HEAD");
         std::string method = std::string(req.method_string());
         if(methods.IsSame(method)){
             std::string req_target = std::string(req.target());
