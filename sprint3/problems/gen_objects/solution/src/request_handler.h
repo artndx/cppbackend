@@ -172,6 +172,7 @@ private:
     explicit ApiHandler(model::Game& game, Strand api_strand, std::optional<double> tick_period, bool randomize_spawn_points )
         : app_(game, tick_period.has_value(), randomize_spawn_points),  api_strand_{api_strand}, ticker_(), loot_ticker_(){
             app_.GenerateLoot(model::detail::Milliseconds{0});
+
             if(tick_period.has_value()){
                 ticker_ = std::make_shared<detail::Ticker>(api_strand_, model::detail::FromDouble(*tick_period), [this](model::detail::Milliseconds delta){
                     this->app_.IncreaseTime(delta.count() / 1000);

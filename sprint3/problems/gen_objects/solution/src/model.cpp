@@ -207,6 +207,7 @@ void Game::GenerateLootInSessions(detail::Milliseconds delta){
     for(auto& [map_id, sessions] : map_id_to_sessions_){
         for(GameSession& session : sessions){
             unsigned current_loot_count = session.GetLootObjects().size();
+            std::cout << current_loot_count << std::endl;
             unsigned loot_count = (*loot_generator_).Generate(delta, current_loot_count, session.GetDogs().size());
             session.UpdateLoot(loot_count);
         }

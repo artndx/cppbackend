@@ -139,6 +139,8 @@ std::string GameUseCase::JoinGame(const std::string& user_name, const std::strin
 
     model::Dog* dog = session->AddDog(auto_counter_, dog_name, dog_pos, 
                                         dog_speed, dog_dir);
+
+    session->UpdateLoot(session->GetDogs().size() - session->GetLootObjects().size());
     model::Player& player = players_.Add(auto_counter_, model::Player::Name(user_name), 
                                         dog, session);
     ++auto_counter_;
