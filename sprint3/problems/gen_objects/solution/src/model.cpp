@@ -204,7 +204,6 @@ detail::Milliseconds Game::GetLootGeneratePeriod() const{
 }
 
 void Game::GenerateLootInSessions(detail::Milliseconds delta){
-    std::cout << "Update\n";
     for(auto& [map_id, sessions] : map_id_to_sessions_){
         for(GameSession& session : sessions){
             unsigned current_loot_count = session.GetLootObjects().size();

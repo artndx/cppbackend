@@ -149,9 +149,9 @@ public:
     StringResponse MakeApiResponse(Request&& req){
         std::string target = std::string(req.target());
         if(detail::IsMatched(target, "(/api/v1/maps)"s)){
-            return MakeMapsListsResponse(req.version());
+            return MakeMapsListsResponse(req);
         } else if(detail::IsMatched(target, "(/api/v1/maps/).+"s)) {
-            return MakeMapDescResponse(target, req.version());
+            return MakeMapDescResponse(req);
         } else if(detail::IsMatched(target, "(/api/v1/game/).*"s)){
             if(detail::IsMatched(target, "(/api/v1/game/join)"s)){
                 return MakeAuthResponse(req);
@@ -213,9 +213,54 @@ private:
         std::cout << " "sv << res.body() << std::endl;
     }
 
-    StringResponse MakeMapsListsResponse(unsigned version);
+    template<typename Request>
+    StringResponse MakeMapsListsResponse(Request&& req){
+        using namespace std::literals;
 
-    StringResponse MakeMapDescResponse(const std::string& req_target, unsigned req_version);
+        SetMethods methods("GET");
+        std::string method = std::string(req.method_string());
+        if(methods.IsSame(method)){
+            std::string body = app_.GetMapsList();
+            return MakeResponse(http::status::ok, body, 
+                                        req.version(), body.size(), "application/json"s);
+        } else{
+            auto res =  MakeErrorResponse(http::status::method_not_allowed, 
+                "invalidMethod"sv, "Only GET method is expected"sv, req.version());
+            res.insert("Allow"s, methods.MakeSequence());
+            return res;
+        }
+
+        std::string body = app_.GetMapsList();
+        return MakeResponse(http::status::ok, body, 
+                                        req.version(), body.size(), "application/json"s);
+    }
+
+    template<typename Request>
+    StringResponse MakeMapDescResponse(Request&& req){
+        using namespace std::literals;
+
+        SetMethods methods("GET");
+        std::string method = std::string(req.method_string());
+        if(methods.IsSame(method)){
+            std::string req_target = std::string(req.target());
+            model::Map::Id id(std::string(req_target.substr(13, req_target.npos)));
+            if(auto map = app_.FindMap(id); map){
+                std::string body = app_.GetMapDescription(map);
+                return MakeResponse(http::status::ok, body, 
+                                        req.version(), body.size(), "application/json"s);
+            }
+
+            return MakeErrorResponse(http::status::not_found, 
+                "mapNotFound"sv, "Map not found"sv, req.version());
+        } else {
+            auto res =  MakeErrorResponse(http::status::method_not_allowed, 
+                "invalidMethod"sv, "Only GET method is expected"sv, req.version());
+            res.insert("Allow"s, methods.MakeSequence());
+            return res;
+        }
+
+
+    }
 
     template<typename Request>
     StringResponse MakeAuthResponse(Request&& req){

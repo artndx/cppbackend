@@ -65,6 +65,9 @@
         "variant": "cpp",
         "latch": "cpp",
         "semaphore": "cpp",
-        "syncstream": "cpp"
+        "syncstream": "cpp",
+        "bitset": "cpp",
+        "cstring": "cpp",
+        "regex": "cpp"
     }
 }
