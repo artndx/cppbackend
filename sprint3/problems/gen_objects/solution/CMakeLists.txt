@@ -7,7 +7,7 @@ set(CMAKE_BUILD_TYPE Debug)
 include(${CMAKE_BINARY_DIR}/conanbuildinfo_multi.cmake)
 conan_basic_setup(TARGETS)
 
-set(THREADS_PREFER_PTHREAD_FLA`G ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
 add_executable(game_server
@@ -45,6 +45,6 @@ add_executable(game_server_tests
     src/tagged.h
     tests/loot_generator_tests.cpp
 )
-target_include_directories(game_server_tests PRIVATE  CONAN_PKG::boost)
+target_include_directories(game_server_tests PRIVATE CONAN_PKG::catch2 CONAN_PKG::boost)
 target_link_libraries(game_server_tests PRIVATE CONAN_PKG::catch2 CONAN_PKG::boost Threads::Threads)
 
