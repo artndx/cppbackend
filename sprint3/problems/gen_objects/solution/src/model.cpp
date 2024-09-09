@@ -33,7 +33,7 @@ const Map::LootTypes& Map::GetLootTypes() const noexcept{
 }
 
 unsigned Map::GetRandomLootType() const{
-    return detail::GetRandomNumber(0, loot_types_.size());
+    return GetRandomNumber(0, loot_types_.size());
 }
 
 void Map::AddRoad(const Road& road) {
@@ -84,6 +84,27 @@ void Map::AddDogSpeed(double new_speed){
 
 double Map::GetDogSpeed() const{
     return dog_speed_;
+}
+
+PairDouble Map::GetFirstPos(const model::Map::Roads& roads){
+    const Point& pos = roads.begin()->GetStart();
+    return {static_cast<double>(pos.x), static_cast<double>(pos.y)};
+}
+
+PairDouble Map::GetRandomPos(const model::Map::Roads& roads){
+    model::Map::RoadTag tag = model::Map::RoadTag(GetRandomNumber(0, 2));
+    size_t road_index = GetRandomNumber(0, roads.size());
+    const model::Road& road = *(roads.begin());
+    double x = 0;
+    double y = 0;
+    if(road.IsHorizontal()){
+        x = GetRandomNumber(road.GetStart().x, road.GetEnd().x);
+        y = road.GetStart().y;
+    } else if(road.IsVertical()){
+        x = road.GetStart().x;
+        y = GetRandomNumber(road.GetStart().y, road.GetEnd().y);
+    }
+    return {x,y};
 }
 
 void Map::FindInVerticals(const Dog::Position& pos, std::vector<const Road*>& roads) const{
@@ -140,6 +161,39 @@ bool Map::CheckBounds(ConstRoadIt it, const Dog::Position& pos) const{
     }
     return ((start.x - 0.4 <= (*pos).x && (*pos).x <= end.x + 0.4) && 
                 (start.y - 0.4 <= (*pos).y && (*pos).y <= end.y + 0.4));
+}
+/* ------------------------ GameSession ----------------------------------- */
+
+Dog* GameSession::AddDog(int id, const Dog::Name& name, 
+                    const Dog::Position& pos, const Dog::Speed& vel, 
+                    Direction dir){
+    dogs_.emplace_back(id, name, pos, vel, dir);
+    return &dogs_.back();
+}
+
+const Map* GameSession::GetMap() const {
+    return map_;
+}
+
+std::deque<Dog>& GameSession::GetDogs(){
+    return dogs_;
+}
+
+const std::deque<Dog>& GameSession::GetDogs() const{
+    return static_cast<const std::deque<Dog>&>(dogs_);
+}
+
+void GameSession::UpdateLoot(unsigned loot_count){
+    for(unsigned i = 0; i < loot_count; ++i){
+        unsigned type = map_->GetRandomLootType();
+        PairDouble pos = Map::GetRandomPos(map_->GetRoads());
+
+        loot_.emplace_back(std::to_string(auto_loot_counter_++), type, pos);
+    }
+}
+
+const std::vector<Loot>& GameSession::GetLootObjects() const{
+    return loot_;
 }
 
 /* ------------------------ Game ----------------------------------- */
@@ -207,7 +261,6 @@ void Game::GenerateLootInSessions(detail::Milliseconds delta){
     for(auto& [map_id, sessions] : map_id_to_sessions_){
         for(GameSession& session : sessions){
             unsigned current_loot_count = session.GetLootObjects().size();
-            std::cout << current_loot_count << std::endl;
             unsigned loot_count = (*loot_generator_).Generate(delta, current_loot_count, session.GetDogs().size());
             session.UpdateLoot(loot_count);
         }
@@ -233,13 +286,13 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
     const auto [x, y] = *(dog.GetPosition());
     const auto [vx, vy] = *(dog.GetSpeed());
 
-    const detail::PairDouble getting_pos({x + vx * delta, y + vy * delta});
-    const detail::PairDouble getting_speed({vx, vy});
+    const PairDouble getting_pos({x + vx * delta, y + vy * delta});
+    const PairDouble getting_speed({vx, vy});
 
-    detail::PairDouble result_pos(getting_pos);
-    detail::PairDouble result_speed(getting_speed);
+    PairDouble result_pos(getting_pos);
+    PairDouble result_speed(getting_speed);
 
-    std::set<detail::PairDouble> collisions;
+    std::set<PairDouble> collisions;
 
     for(const Road* road : roads){
         Point start = road->GetStart();
@@ -279,7 +332,7 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
     dog.SetSpeed(Dog::Speed(result_speed));
 }   
 
-bool Game::IsInsideRoad(const detail::PairDouble& getting_pos, const Point& start, const Point& end){
+bool Game::IsInsideRoad(const PairDouble& getting_pos, const Point& start, const Point& end){
     bool in_left_border = getting_pos.x >= start.x - road_offset_;
     bool in_right_border = getting_pos.x <= end.x + road_offset_;
     bool in_upper_border = getting_pos.y >= start.y - road_offset_;

@@ -20,15 +20,6 @@ inline Milliseconds FromDouble(double delta){
     return std::chrono::duration_cast<Milliseconds>(std::chrono::duration<double>(delta/1000));
 }   
 
-struct PairDouble{
-    double x = 0;
-    double y = 0;
-};
-
-inline bool operator<(const detail::PairDouble& lhs, const detail::PairDouble& rhs){
-    return std::tuple(lhs.x, lhs.y) < std::tuple(rhs.x, rhs.x);
-}
-
 } // namespace detail
 
 using Dimension = int;
@@ -58,10 +49,19 @@ struct Offset {
     Dimension dx, dy;
 };
 
+struct PairDouble{
+    double x = 0;
+    double y = 0;
+};
+
+inline bool operator<(const PairDouble& lhs, const PairDouble& rhs){
+    return std::tuple(lhs.x, lhs.y) < std::tuple(rhs.x, rhs.x);
+}
+
 struct Loot{
     std::string id;
     unsigned type;
-    detail::PairDouble pos;
+    PairDouble pos;
 };
 
 class Road {
@@ -166,8 +166,8 @@ private:
 class Dog{
 public:
     using Name = util::Tagged<std::string, Dog>;
-    using Position = util::Tagged<detail::PairDouble, Dog>;
-    using Speed = util::Tagged<detail::PairDouble, Dog>;
+    using Position = util::Tagged<PairDouble, Dog>;
+    using Speed = util::Tagged<PairDouble, Dog>;
 
     Dog(int id, Name name, Position pos, Speed speed, Direction dir) noexcept
         : id_(id), name_(name)
@@ -270,13 +270,20 @@ public:
 
     double GetDogSpeed() const;
 
+    static PairDouble GetFirstPos(const model::Map::Roads& roads);
+
+    static PairDouble GetRandomPos(const model::Map::Roads& roads);
 private:
+    static unsigned GetRandomNumber(unsigned a, unsigned b){
+        return a + rand()%(b-a);
+    }
+
     using OfficeIdToIndex = std::unordered_map<Office::Id, size_t, util::TaggedHasher<Office::Id>>;
 
-    /* Обработка вертикальных дорог по x координате*/
+    /* Поиск вертикальных дорог по x координате*/
     void FindInVerticals(const Dog::Position& pos, std::vector<const Road*>& roads) const;
 
-    /* Обработка горизонтальных дорог по y координате*/
+    /* Поиск горизонтальных дорог по y координате*/
     void FindInHorizontals(const Dog::Position& pos, std::vector<const Road*>& roads) const;
 
     bool CheckBounds(ConstRoadIt it, const Dog::Position& pos) const;
@@ -293,74 +300,23 @@ private:
     double dog_speed_ = 0;
 };
 
-namespace detail{
-
-inline unsigned GetRandomNumber(unsigned a, unsigned b){
-    return a + rand()%(b-a);
-}
-
-inline PairDouble GetFirstPos(const model::Map::Roads& roads){
-    const Point& pos = roads.begin()->GetStart();
-    return {static_cast<double>(pos.x), static_cast<double>(pos.y)};
-}
-
-inline PairDouble GetRandomPos(const model::Map::Roads& roads){
-
-    model::Map::RoadTag tag = model::Map::RoadTag(GetRandomNumber(0, 2));
-    size_t road_index = GetRandomNumber(0, roads.size());
-    const model::Road& road = *(roads.begin());
-    double x = 0;
-    double y = 0;
-    if(road.IsHorizontal()){
-        x = GetRandomNumber(road.GetStart().x, road.GetEnd().x);
-        y = road.GetStart().y;
-    } else if(road.IsVertical()){
-        x = road.GetStart().x;
-        y = GetRandomNumber(road.GetStart().y, road.GetEnd().y);
-    }
-    return {x,y};
-}
-
-} // namespace detail
-
 class GameSession{
 public:
     explicit GameSession(const Map* map)
         : map_(map){
     }
 
-    Dog* AddDog(int id, const Dog::Name& name, 
-                        const Dog::Position& pos, const Dog::Speed& vel, 
-                        Direction dir){
-        dogs_.emplace_back(id, name, pos, vel, dir);
-        return &dogs_.back();
-    }
+    Dog* AddDog(int id, const Dog::Name& name, const Dog::Position& pos, const Dog::Speed& vel, Direction dir);
 
-    const Map* GetMap() const {
-        return map_;
-    }
+    const Map* GetMap() const;
 
-    std::deque<Dog>& GetDogs(){
-        return dogs_;
-    }
+    std::deque<Dog>& GetDogs();
 
-    const std::deque<Dog>& GetDogs() const{
-        return static_cast<const std::deque<Dog>&>(dogs_);
-    }
+    const std::deque<Dog>& GetDogs() const;
 
-    void UpdateLoot(unsigned loot_count){
-        for(unsigned i = 0; i < loot_count; ++i){
-            unsigned type = map_->GetRandomLootType();
-            detail::PairDouble pos = detail::GetRandomPos(map_->GetRoads());
+    void UpdateLoot(unsigned loot_count);
 
-            loot_.emplace_back(std::to_string(auto_loot_counter_++), type, pos);
-        }
-    }
-
-    const std::vector<Loot>& GetLootObjects() const{
-        return loot_;
-    }
-
+    const std::vector<Loot>& GetLootObjects() const;
 private:
     unsigned auto_loot_counter_ = 0;
     std::vector<Loot> loot_;
@@ -398,7 +354,7 @@ private:
 
     void UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double delta);
 
-    static bool IsInsideRoad(const detail::PairDouble& getting_pos, const Point& start, const Point& end);
+    static bool IsInsideRoad(const PairDouble& getting_pos, const Point& start, const Point& end);
 
     using MapIdHasher = util::TaggedHasher<Map::Id>;
     using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
