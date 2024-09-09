@@ -48,5 +48,5 @@ target_link_libraries(collision_detection_tests PRIVATE CONAN_PKG::catch2 CONAN_
 
 
 include(CTest)
-include(${CONAN_BUILD_DIRS_CATCH2_DEBUG}/Catch.cmake)
+include(${CONAN_BUILD_DIRS_CATCH2}/Catch.cmake)
 catch_discover_tests(game_server_tests)
