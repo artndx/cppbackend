@@ -1,209 +1,216 @@
 #define _USE_MATH_DEFINES
+#include <catch2/catch_test_macros.hpp>
+#include <catch2/matchers/catch_matchers_floating_point.hpp>
 
 #include "../src/collision_detector.h"
-#include <catch2/catch_test_macros.hpp>
-#include <catch2/matchers/catch_matchers.hpp>
-#include <vector>
-#include <sstream>
+
+#include <string>
+#include <memory>
 
 // Напишите здесь тесты для функции collision_detector::FindGatherEvents
 
-using namespace std::literals;
-using namespace collision_detector;
+namespace {
+    const std::string TAG = "[FindGatherEvents]";
+}
 
-class TestItemGathererProvider : public ItemGathererProvider{
+namespace collision_detector {
+
+class ItemGathererProviderImpl: public ItemGathererProvider {
 public:
-    using Items = std::vector<Item>;
-    using Gatherers = std::vector<Gatherer>;
-
-    TestItemGathererProvider(Items items, Gatherers gatherers)
-    : items_(std::move(items)), gatherers_(std::move(gatherers)){}
-
-    size_t ItemsCount() const override{
+    virtual ~ItemGathererProviderImpl() = default;
+    
+    size_t ItemsCount() const {
         return items_.size();
-    }
+    };
 
     Item GetItem(size_t idx) const override{
         return items_[idx];
-    }
+    };
+
+    void AddItem(Item item) {
+        items_.push_back(std::move(item));
+    };
 
     size_t GatherersCount() const override{
         return gatherers_.size();
-    }
+    };
 
     Gatherer GetGatherer(size_t idx) const override{
         return gatherers_[idx];
-    }
+    };
+
+    void AddGatherer(Gatherer gatherer) {
+        gatherers_.push_back(std::move(gatherer));
+    };
 private:
-    Items items_;
-    Gatherers gatherers_;
+    std::vector<Item> items_;
+    std::vector<Gatherer> gatherers_;
 };
 
-using Items = TestItemGathererProvider::Items;
-using Gatherers = TestItemGathererProvider::Gatherers;
-using Events = std::vector<GatheringEvent>;
-
-namespace Catch {
-    
-template<>
-struct StringMaker<GatheringEvent> {
-  static std::string convert(GatheringEvent const& value) {
-      std::ostringstream tmp;
-      tmp << "(" << value.item_id << "," << value.gatherer_id << "," << value.sq_distance << "," << value.time << ")";
-
-      return tmp.str();
-  }
-};
-
-}  // namespace Catch 
-
-namespace collision_detector{
-
-inline bool operator==(const GatheringEvent& lhs, const GatheringEvent& rhs){
-    // return std::tie(lhs.gatherer_id, lhs.item_id, lhs.sq_distance, lhs.time) == std::tie(rhs.gatherer_id, rhs.item_id, rhs.sq_distance, rhs.time);
-    bool gatherer_id_is_equals = (lhs.gatherer_id == rhs.gatherer_id);
-    bool item_id_is_equals = (lhs.item_id == rhs.item_id);
-    bool sq_distance_is_equals = (std::abs(lhs.sq_distance - rhs.sq_distance) <= 10e-10);
-    bool time_is_equals = (std::abs(lhs.time - rhs.time) <= 10e-10);
-    return (gatherer_id_is_equals && item_id_is_equals && sq_distance_is_equals && time_is_equals);
 }
 
-} // namespace collision_detector
+using namespace std::literals;
 
-/*
-
-================ Случаи, когда собиратель подбирает предмет:    ================
-
-1.  Проекция предмета попадает на отрезок перемещения и 
-    расстояние от прямой перемещения до предмета не больше, 
-    чем сумма радиусов предмета и собирателя
-
-================ Случаи, когда собиратель не подбирает предмет: ================
-
-1.  Проекция предмета не попадает на отрезок перемещения
-
-2.  Расстояние от прямой перемещения до предмета больше
-    суммы радиусом предмета и собирателя
+TEST_CASE("Gather collect one item moving on x-axis", TAG) {
+    using Catch::Matchers::WithinRel;
+    collision_detector::Item item{{12.5, 0}, 0.6};
+    collision_detector::Gatherer gatherer{{0, 0}, {22.5, 0}, 0.6};
+    collision_detector::ItemGathererProviderImpl provider;
+    provider.AddItem(item);
+    provider.AddGatherer(gatherer);
+    auto events = collision_detector::FindGatherEvents(provider);
     
-3.  Собиратель не перемещается
+    CHECK(events.size() == 1);
+    CHECK(events[0].item_id == 0);
+    CHECK(events[0].gatherer_id == 0);
+    CHECK_THAT(events[0].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[0].time, WithinRel((item.position.x/gatherer.end_pos.x), 1e-9)); 
+}
 
-*/
+TEST_CASE("Gather collect one item moving on x-axis on edge", TAG) {
+    using Catch::Matchers::WithinRel;
+    collision_detector::Item item{{12.5, 0}, 0.6};
+    collision_detector::Gatherer gatherer{{0, 0}, {12.5, 0}, 0.6};
+    collision_detector::ItemGathererProviderImpl provider;
+    provider.AddItem(item);
+    provider.AddGatherer(gatherer);
+    auto events = collision_detector::FindGatherEvents(provider);
+    
+    CHECK(events.size() == 1);
+    CHECK(events[0].item_id == 0);
+    CHECK(events[0].gatherer_id == 0);
+    CHECK_THAT(events[0].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[0].time, WithinRel((item.position.x/gatherer.end_pos.x), 1e-9)); 
+}
 
-SCENARIO("Collision detection") {
+TEST_CASE("Gather collect one item moving on x-axis on side", TAG) {
+    using Catch::Matchers::WithinRel;
+    collision_detector::Item item{{12.5, 0.5}, 0.0};
+    collision_detector::Gatherer gatherer{{0, 0.1}, {22.5, 0.1}, 0.6};
+    collision_detector::ItemGathererProviderImpl provider;
+    provider.AddItem(item);
+    provider.AddGatherer(gatherer);
+    auto events = collision_detector::FindGatherEvents(provider);
+    
+    CHECK(events.size() == 1);
+    CHECK(events[0].item_id == 0);
+    CHECK(events[0].gatherer_id == 0);
+    CHECK_THAT(events[0].sq_distance, WithinRel(0.16, 1e-9));
+    CHECK_THAT(events[0].time, WithinRel((item.position.x/gatherer.end_pos.x), 1e-9)); 
+}
 
-    SECTION("Case: Gatherer collect item"){
-        GIVEN("1 gatherer and 1 item"){
-            Items items {
-                {{3.0, 1.0}, 1.0}
-            };
+TEST_CASE("Gather collect one item moving on y-axis", TAG) {
+    using Catch::Matchers::WithinRel;
+    collision_detector::Item item{{0, 12.5}, 0.6};
+    collision_detector::Gatherer gatherer{{0, 0}, {0, 22.5}, 0.6};
+    collision_detector::ItemGathererProviderImpl provider;
+    provider.AddItem(item);
+    provider.AddGatherer(gatherer);
+    auto events = collision_detector::FindGatherEvents(provider);
+    
+    CHECK(events.size() == 1);
+    CHECK(events[0].item_id == 0);
+    CHECK(events[0].gatherer_id == 0);
+    CHECK_THAT(events[0].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[0].time, WithinRel((item.position.y/gatherer.end_pos.y), 1e-9)); 
+}
 
-            Gatherers gatherers {
-                {{0.0, 0.0}, {5.0, 0.0}, 0.6}
-            };
+TEST_CASE("Gather collect two unordered items moving on x-axis", TAG) {
+    using Catch::Matchers::WithinRel;
+    collision_detector::Item item1{{12.5, 0}, 0.6};
+    collision_detector::Item item2{{6.5, 0}, 0.6};
+    collision_detector::Gatherer gatherer{{0, 0}, {22.5, 0}, 0.6};
+    collision_detector::ItemGathererProviderImpl provider;
+    provider.AddItem(item1);
+    provider.AddItem(item2);
+    provider.AddGatherer(gatherer);
+    auto events = collision_detector::FindGatherEvents(provider);
+    
+    CHECK(events.size() == 2);
 
-            TestItemGathererProvider provider(items, gatherers);
+    CHECK(events[0].item_id == 1);
+    CHECK(events[0].gatherer_id == 0);
+    CHECK_THAT(events[0].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[0].time, WithinRel((item2.position.x/gatherer.end_pos.x), 1e-9)); 
+    
+    CHECK(events[1].item_id == 0);
+    CHECK(events[1].gatherer_id == 0);
+    CHECK_THAT(events[1].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[1].time, WithinRel((item1.position.x/gatherer.end_pos.x), 1e-9)); 
+}
 
-            Events found_events = FindGatherEvents(provider);
-            Events expected_events {
-                {0, 0, 1, 0.6}
-            };
+TEST_CASE("Gather collect one of two items moving on x-axis", TAG) {
+    using Catch::Matchers::WithinRel;
+    collision_detector::Item item1{{42.5, 0}, 0.6};
+    collision_detector::Item item2{{6.5, 0}, 0.6};
+    collision_detector::Gatherer gatherer{{0, 0}, {22.5, 0}, 0.6};
+    collision_detector::ItemGathererProviderImpl provider;
+    provider.AddItem(item1);
+    provider.AddItem(item2);
+    provider.AddGatherer(gatherer);
+    auto events = collision_detector::FindGatherEvents(provider);
 
+    CHECK(events.size() == 1);
 
-            CHECK(found_events == expected_events);
-        }
-    }
+    CHECK(events[0].item_id == 1);
+    CHECK(events[0].gatherer_id == 0);
+    CHECK_THAT(events[0].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[0].time, WithinRel((item2.position.x/gatherer.end_pos.x), 1e-9)); 
+}
 
-    SECTION("Case: Gatherers not collect item"){
-        GIVEN("3 gatherers and 1 item"){
-            Items items {
-                {{3.0, 1.0}, 1.0}
-            };
-            
-            Gatherers gatherers {
-                {{0.0, 0.0}, {0.0, 0.0}, 0.6},
-                {{0.0, 0.0}, {2.0, 0.0}, 0.6},
-                {{0.0, 4.0}, {3.0, 4.0}, 0.6}
-            };
+TEST_CASE("Two gathers collect two separate items moving on x-axis and y-axis", TAG) {
+    using Catch::Matchers::WithinRel;
+    collision_detector::Item item1{{0, 12.5}, 0.6};
+    collision_detector::Item item2{{6.5, 0}, 0.6};
+    collision_detector::Gatherer gatherer1{{0, 0}, {22.5, 0}, 0.6};
+    collision_detector::Gatherer gatherer2{{0, 0}, {0, 22.5}, 0.6};
+    collision_detector::ItemGathererProviderImpl provider;
+    provider.AddItem(item1);
+    provider.AddItem(item2);
+    provider.AddGatherer(gatherer1);
+    provider.AddGatherer(gatherer2);
+    auto events = collision_detector::FindGatherEvents(provider);
+    
+    CHECK(events.size() == 2);
 
-            TestItemGathererProvider provider(items, gatherers);
+    CHECK(events[0].item_id == 1);
+    CHECK(events[0].gatherer_id == 0);
+    CHECK_THAT(events[0].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[0].time, WithinRel((item2.position.x/gatherer1.end_pos.x), 1e-9)); 
+    
+    CHECK(events[1].item_id == 0);
+    CHECK(events[1].gatherer_id == 1);
+    CHECK_THAT(events[1].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[1].time, WithinRel((item1.position.y/gatherer2.end_pos.y), 1e-9)); 
+}
 
-            Events found_events = FindGatherEvents(provider);
-            Events expected_events {};
-            CHECK(found_events == expected_events);
-        }
-    }
+TEST_CASE("Two gathers collect three items moving on x-axis and y-axis", TAG) {
+    using Catch::Matchers::WithinRel;
+    collision_detector::Item item1{{12.5, 0}, 0.6};
+    collision_detector::Item item2{{6.5, 0}, 0.6};
+    collision_detector::Gatherer gatherer1{{0, 0}, {22.5, 0}, 0.6};
+    collision_detector::Gatherer gatherer2{{0, 0}, {10, 0}, 0.6};
+    collision_detector::ItemGathererProviderImpl provider;
+    provider.AddItem(item1);
+    provider.AddItem(item2);
+    provider.AddGatherer(gatherer1);
+    provider.AddGatherer(gatherer2);
+    auto events = collision_detector::FindGatherEvents(provider);
+    
+    CHECK(events.size() == 3);
 
-    SECTION("Case: Chronological order of events"){
-        GIVEN("3 gatherers and 3 items"){
-            Items items {
-                {{3.0, 0.0}, 1.0},
-                {{2.0, 4.0}, 1.0},
-                {{1.0, 10.0}, 1.0}
+    CHECK(events[0].item_id == 1);
+    CHECK(events[0].gatherer_id == 0);
+    CHECK_THAT(events[0].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[0].time, WithinRel((item2.position.x/gatherer1.end_pos.x), 1e-9)); 
 
-            };
-            
-            Gatherers gatherers {
-                {{0.0, 0.0}, {5.0, 0.0}, 0.6},
-                {{0.0, 4.0}, {5.0, 4.0}, 0.6},
-                {{0.0, 10.0}, {5.0, 10.0}, 0.6}
-            };
+    CHECK(events[1].item_id == 0);
+    CHECK(events[1].gatherer_id == 0);
+    CHECK_THAT(events[1].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[1].time, WithinRel((item1.position.x/gatherer1.end_pos.x), 1e-9)); 
 
-            TestItemGathererProvider provider(items, gatherers);
-
-            Events found_events = FindGatherEvents(provider);
-            Events expected_events {
-                {2, 2, 0, 0.2},
-                {1, 1, 0, 0.4},
-                {0, 0, 0, 0.6}
-            };
-            CHECK(found_events == expected_events); 
-        }
-
-        GIVEN("2 gatherers and 1 items"){
-            Items items {
-                {{3.0, 0.5}, 1.0}
-            };
-            
-            Gatherers gatherers {
-                {{1.0, 0.0}, {6.0, 0.0}, 0.6},
-                {{0.0, 0.0}, {5.0, 0.0}, 0.6}
-            };
-
-            TestItemGathererProvider provider(items, gatherers);
-
-            Events found_events = FindGatherEvents(provider);
-            Events expected_events {
-                {0, 0, 0.25, 0.4},
-                {0, 1, 0.25, 0.6}
-            };
-            CHECK(found_events == expected_events); 
-        }
-    }
-
-    SECTION("Case: Correct data in events"){
-        GIVEN("3 gatherers and 2 items"){
-            Items items {
-                {{4.5, 1}, 1.0},
-                {{3, 2.5}, 1.0}
-            };
-            
-            Gatherers gatherers {
-                {{1.0, 0.0}, {5.0, 5.0}, 0.6},
-                {{1.0, 3.0}, {5.0, 1.0}, 0.6},
-                {{3.0, 0.0}, {3, 5.0}, 0.6}
-            };
-
-            TestItemGathererProvider provider(items, gatherers);
-
-            Events found_events = FindGatherEvents(provider);
-            Events expected_events {
-                {0, 2, 2.25, 0.2},
-                {1, 1, 0.2, 0.45},
-                {1, 0, 0, 0.5},
-                {1, 2, 0.0, 0.5},
-                {0, 1, 0.05, 0.9}
-            };
-            CHECK(found_events == expected_events);             
-        }
-    }
+    CHECK(events[2].item_id == 1);
+    CHECK(events[2].gatherer_id == 1);
+    CHECK_THAT(events[2].sq_distance, WithinRel(0.0, 1e-9));
+    CHECK_THAT(events[2].time, WithinRel((item2.position.x/gatherer2.end_pos.x), 1e-9)); 
 }
