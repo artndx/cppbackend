@@ -44,9 +44,9 @@ add_executable(collision_detection_tests
 	src/collision_detector.cpp
 	tests/collision-detector-tests.cpp
 )
-target_link_libraries(collision_detection_tests PRIVATE CONAN_PKG::catch2 CONAN_PKG::boost Threads::Threads)
+target_link_libraries(collision_detection_tests PRIVATE CONAN_PKG::catch2 Threads::Threads)
 
 
-include(CTest)
-include(${CONAN_BUILD_DIRS_CATCH2}/Catch.cmake)
-catch_discover_tests(game_server_tests)
+# include(CTest)
+# include(${CONAN_BUILD_DIRS_CATCH2}/Catch.cmake)
+# catch_discover_tests(game_server_tests)
