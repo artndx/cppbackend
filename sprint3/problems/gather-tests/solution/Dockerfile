@@ -6,9 +6,10 @@ RUN apt update && \
       python3-pip \
       cmake \
     && \
-    pip3 install conan==1.53.0
+    pip3 install conan==1.*
 
 COPY conanfile.txt /app/
+COPY default.txt /root/.conan/profiles/
 RUN mkdir /app/build && cd /app/build && \
     conan install .. --build=missing -s compiler.libcxx=libstdc++11
 
