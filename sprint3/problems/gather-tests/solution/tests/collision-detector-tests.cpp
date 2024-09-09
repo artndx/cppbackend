@@ -94,11 +94,11 @@ SCENARIO("Collision detection") {
     SECTION("Case: Gatherer collect item"){
         GIVEN("1 gatherer and 1 item"){
             Items items {
-                {Point2D{3.0, 1.0}, 1.0}
+                {{3.0, 1.0}, 1.0}
             };
 
             Gatherers gatherers {
-                {Point2D{0.0, 0.0}, Point2D{5.0, 0.0}, 0.6}
+                {{0.0, 0.0}, {5.0, 0.0}, 0.6}
             };
 
             TestItemGathererProvider provider(items, gatherers);
@@ -116,13 +116,13 @@ SCENARIO("Collision detection") {
     SECTION("Case: Gatherers not collect item"){
         GIVEN("3 gatherers and 1 item"){
             Items items {
-                {Point2D{3.0, 1.0}, 1.0}
+                {{3.0, 1.0}, 1.0}
             };
             
             Gatherers gatherers {
-                {Point2D{0.0, 0.0}, Point2D{0.0, 0.0}, 0.6},
-                {Point2D{0.0, 0.0}, Point2D{2.0, 0.0}, 0.6},
-                {Point2D{0.0, 4.0}, Point2D{3.0, 4.0}, 0.6}
+                {{0.0, 0.0}, {0.0, 0.0}, 0.6},
+                {{0.0, 0.0}, {2.0, 0.0}, 0.6},
+                {{0.0, 4.0}, {3.0, 4.0}, 0.6}
             };
 
             TestItemGathererProvider provider(items, gatherers);
@@ -136,16 +136,16 @@ SCENARIO("Collision detection") {
     SECTION("Case: Chronological order of events"){
         GIVEN("3 gatherers and 3 items"){
             Items items {
-                {Point2D{3.0, 0.0}, 1.0},
-                {Point2D{2.0, 4.0}, 1.0},
-                {Point2D{1.0, 10.0}, 1.0}
+                {{3.0, 0.0}, 1.0},
+                {{2.0, 4.0}, 1.0},
+                {{1.0, 10.0}, 1.0}
 
             };
             
             Gatherers gatherers {
-                {Point2D{0.0, 0.0}, Point2D{5.0, 0.0}, 0.6},
-                {Point2D{0.0, 4.0}, Point2D{5.0, 4.0}, 0.6},
-                {Point2D{0.0, 10.0}, Point2D{5.0, 10.0}, 0.6}
+                {{0.0, 0.0}, {5.0, 0.0}, 0.6},
+                {{0.0, 4.0}, {5.0, 4.0}, 0.6},
+                {{0.0, 10.0}, {5.0, 10.0}, 0.6}
             };
 
             TestItemGathererProvider provider(items, gatherers);
@@ -161,12 +161,12 @@ SCENARIO("Collision detection") {
 
         GIVEN("2 gatherers and 1 items"){
             Items items {
-                {Point2D{3.0, 0.5}, 1.0}
+                {{3.0, 0.5}, 1.0}
             };
             
             Gatherers gatherers {
-                {Point2D{1.0, 0.0}, Point2D{6.0, 0.0}, 0.6},
-                {Point2D{0.0, 0.0}, Point2D{5.0, 0.0}, 0.6}
+                {{1.0, 0.0}, {6.0, 0.0}, 0.6},
+                {{0.0, 0.0}, {5.0, 0.0}, 0.6}
             };
 
             TestItemGathererProvider provider(items, gatherers);
@@ -183,14 +183,14 @@ SCENARIO("Collision detection") {
     SECTION("Case: Correct data in events"){
         GIVEN("3 gatherers and 2 items"){
             Items items {
-                {Point2D{4.5, 1}, 1.0},
-                {Point2D{3, 2.5}, 1.0}
+                {{4.5, 1}, 1.0},
+                {{3, 2.5}, 1.0}
             };
             
             Gatherers gatherers {
-                {Point2D{1.0, 0.0}, Point2D{5.0, 5.0}, 0.6},
-                {Point2D{1.0, 3.0}, Point2D{5.0, 1.0}, 0.6},
-                {Point2D{3.0, 0.0}, Point2D{3, 5.0}, 0.6}
+                {{1.0, 0.0}, {5.0, 5.0}, 0.6},
+                {{1.0, 3.0}, {5.0, 1.0}, 0.6},
+                {{3.0, 0.0}, {3, 5.0}, 0.6}
             };
 
             TestItemGathererProvider provider(items, gatherers);
