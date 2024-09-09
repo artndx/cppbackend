@@ -19,8 +19,6 @@ COPY CMakeLists.txt /app/
 
 RUN cd /app/build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
-    cmake --build .
-
-RUN ls
+    cmake --build . && ls
 
 ENTRYPOINT ["/app/build/bin/collision_detection_tests"]
