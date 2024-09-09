@@ -1,0 +1,53 @@
+
+### Запрос на список карт:
+GET http://127.0.0.1:8080/api/v1/maps HTTP/1.1
+### Запрос на список карт: 
+GET http://127.0.0.1:8080/api/v1/maps/map1 HTTP/1.1
+### Запрос на вход в игру:
+# @name join1
+POST http://127.0.0.1:8080/api/v1/game/join HTTP/1.1
+Content-Type: application/json
+
+{"userName": "User1", "mapId": "map1"}
+### Запрос на получение players:
+@authToken1 = {{join1.response.body.authToken}}
+GET http://127.0.0.1:8080/api/v1/game/players HTTP/1.1
+Authorization: Bearer {{authToken1}}
+### Запрос на получение state:
+@authToken1 = {{join1.response.body.authToken}}
+GET http://127.0.0.1:8080/api/v1/game/state HTTP/1.1
+Authorization: Bearer {{authToken1}}
+### Запрос на действие персонажем:
+POST http://127.0.0.1:8080/api/v1/game/player/action HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{authToken1}}
+
+{"move": "R"}
+### 
+POST http://127.0.0.1:8080/api/v1/game/tick HTTP/1.1
+Content-Type: application/json
+
+{"timeDelta": 1000}
+
+
+
+### Запрос на вход в игру (другая карта):
+# @name join2
+POST http://127.0.0.1:8080/api/v1/game/join HTTP/1.1
+Content-Type: application/json
+
+{"userName": "User2", "mapId": "town"}
+### Запрос на получение players:
+@authToken2 = {{join2.response.body.authToken}}
+GET http://127.0.0.1:8080/api/v1/game/players HTTP/1.1
+Authorization: Bearer {{authToken2}}
+### Запрос на получение state:
+@authToken = {{join2.response.body.authToken}}
+GET http://127.0.0.1:8080/api/v1/game/state HTTP/1.1
+Authorization: Bearer {{authToken2}}
+### Запрос на действие персонажем:
+POST http://127.0.0.1:8080/api/v1/game/player/action HTTP/1.1
+Content-Type: application/json
+Authorization: Bearer {{authToken2}}
+
+{"move": "R"}
