@@ -2,7 +2,7 @@
 ### Запрос на список карт:
 GET http://127.0.0.1:8080/api/v1/maps HTTP/1.1
 ### Запрос на список карт: 
-GET http://127.0.0.1:8080/api/v1/maps/map1 HTTP/1.1
+GET http://127.0.0.1:8080/api/v1/maps/map21 HTTP/1.1
 ### Запрос на вход в игру:
 # @name join1
 POST http://127.0.0.1:8080/api/v1/game/join HTTP/1.1
