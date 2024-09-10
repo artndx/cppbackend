@@ -98,14 +98,21 @@ void AddMaps(const json::array& json_maps, Game& game){
 
         Map map{Map::Id{GetString("id", json_map)}, GetString("name", json_map)};
         double dog_speed = game.GetDefaultDogSpeed();
+        unsigned bag_cap = game.GetDefaultBagCapacity();
+
         try{
             if(auto it = json_map.find("dogSpeed"); it != json_map.end()){
                 dog_speed = it->value().as_double();
+            }
+
+            if(auto it = json_map.find("bagCapacity"); it != json_map.end()){
+                bag_cap = it->value().as_int64();
             }
         } catch(std::exception& ex){
             std::cerr << ex.what() << std::endl;
         }
         map.AddDogSpeed(dog_speed);
+        map.AddBagCapacity(bag_cap);
         AddRoadsFromJson(json_map, map);
         AddBuildingsFromJson(json_map, map);
         AddOfficesFromJson(json_map, map);
@@ -120,6 +127,9 @@ void LoadConfig(std::string json_str, Game& game){
 
         if(auto it = attributes.find("defaultDogSpeed"); it != attributes.end()){
             game.SetDefaultDogSpeed(it->value().as_double());
+        }
+        if(auto it = attributes.find("defaultBagCapacity"); it != attributes.end()){
+            game.SetDefaultBagCapacity(it->value().as_int64());
         }
         if(auto it = attributes.find("maps"); it != attributes.end()){
             AddMaps(it->value().as_array(), game);

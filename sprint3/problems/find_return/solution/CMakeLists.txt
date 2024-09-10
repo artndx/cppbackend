@@ -35,7 +35,7 @@ add_executable(game_server
 	src/app.cpp src/app.h
 	src/logger.cpp src/logger.h
 )
-target_link_libraries(game_server CONAN_PKG::boost Threads::Threads ModelLib)
+target_link_libraries(game_server CONAN_PKG::boost Threads::Threads ModelLib collision_detection_lib)
 
 add_executable(game_server_tests
     tests/loot_generator_tests.cpp

@@ -1,1 +1,1 @@
-./build/game_server -t 1000 -c ./data/config.json -w ./static/
+./build/game_server -c ./data/config.json -w ./static/

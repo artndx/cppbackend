@@ -45,6 +45,7 @@ public:
 
     void GenerateLoot(detail::Milliseconds delta, Game& game);
 private:
+    json::array GetBagItems(const Dog::Bag& bag_items) const;
     json::object GetPlayers(const GameSession* session) const;
     json::object GetLostObjects(const GameSession* session) const;
 

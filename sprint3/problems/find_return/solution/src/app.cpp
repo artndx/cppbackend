@@ -157,6 +157,19 @@ std::string GameUseCase::JoinGame(const std::string& user_name, const std::strin
     return json::serialize(json_body);   
 }
 
+json::array GameUseCase::GetBagItems(const Dog::Bag& bag_items) const{
+    json::array items;
+    for(const Loot& loot : *bag_items){
+        json::object loot_desc;
+        loot_desc["id"] = loot.id;
+        loot_desc["type"] = loot.type;
+
+        items.push_back(loot_desc);
+    }   
+
+    return items;
+};
+
 json::object GameUseCase::GetPlayers(const GameSession* session) const{
     json::object players;
 
@@ -187,6 +200,8 @@ json::object GameUseCase::GetPlayers(const GameSession* session) const{
             default:
                 player_attributes["dir"] = "Unknown";
         }
+
+        player_attributes["bag"] = GetBagItems(player->GetDog()->GetBag());
 
         players[std::to_string(player->GetId())] = player_attributes;
     }
