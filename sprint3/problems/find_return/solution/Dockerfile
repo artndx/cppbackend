@@ -21,4 +21,4 @@ RUN cd /app/build && \
     cmake -DCMAKE_BUILD_TYPE=Release .. && \
     cmake --build . && ls
 
-ENTRYPOINT ["/app/build/collision_detection_tests"]
+ENTRYPOINT ["/app/game_server", "/app/data/config.json", "/app/static"]
