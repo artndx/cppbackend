@@ -103,7 +103,7 @@ json::array GetMapUseCase::GetLootTypesInJSON(const Map::LootTypes& loot_types){
             obj["scale"] = *lt.scale;
         }
         if(lt.value.has_value()){
-            obj["value"] = *lt.scale;
+            obj["value"] = *lt.value;
         }
 
         result.push_back(obj);
