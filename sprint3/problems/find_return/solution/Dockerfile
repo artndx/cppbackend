@@ -13,7 +13,9 @@ COPY default.txt /root/.conan/profiles/
 RUN mkdir /app/build && cd /app/build && \
     conan install .. --build=missing -s compiler.libcxx=libstdc++11 -s build_type=Release
 
+COPY ./data /app/data
 COPY ./src /app/src
+COPY ./static /app/static
 COPY ./tests /app/tests
 COPY CMakeLists.txt /app/
 
