@@ -16,6 +16,8 @@ std::string GetMapUseCase::MakeMapDescription(const Map* map){
     map_description["buildings"] = GetBuildingsInJSON(map->GetBuildings());
     map_description["offices"] = GetOfficesInJSON(map->GetOffices());
     map_description["lootTypes"] = GetLootTypesInJSON(map->GetLootTypes());
+    map_description["bagCapacity"] = map->GetBagCapacity();
+
 
     return json::serialize(map_description); 
 }
