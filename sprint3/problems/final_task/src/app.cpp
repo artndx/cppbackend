@@ -165,7 +165,7 @@ std::string GameUseCase::JoinGame(const std::string& user_name, const std::strin
     return json::serialize(json_body);   
 }
 
-json::array GameUseCase::GetBagItems(const Dog::Bag& bag_items) const{
+json::array GameUseCase::GetBagItems(const Dog::Bag& bag_items){
     json::array items;
     for(const Loot& loot : *bag_items){
         json::object loot_desc;
@@ -178,10 +178,10 @@ json::array GameUseCase::GetBagItems(const Dog::Bag& bag_items) const{
     return items;
 };
 
-json::object GameUseCase::GetPlayers(const GameSession* session) const{
+json::object GameUseCase::GetPlayers(const PlayerTokens::PlayersInSession& players_in_session){
     json::object players;
 
-    for(const Player* player : tokens_.GetPlayersBySession(session)){
+    for(const Player* player : players_in_session){
         json::object player_attributes;
 
         const PairDouble& pos = *(player->GetDog()->GetPosition());
@@ -218,10 +218,10 @@ json::object GameUseCase::GetPlayers(const GameSession* session) const{
     return players;
 }
 
-json::object GameUseCase::GetLostObjects(const GameSession* session) const{
+json::object GameUseCase::GetLostObjects(const std::deque<Loot>& loots){
     json::object lost_objects;
     
-    for(const Loot& loot : session->GetLootObjects()){
+    for(const Loot& loot : loots){
         json::object loot_decs;
 
         loot_decs["type"] = loot.type;
@@ -238,8 +238,8 @@ std::string GameUseCase::GetGameState(const Token& token) const{
     json::object result;
     const GameSession* session = tokens_.FindPlayerByToken(token)->GetSession();
 
-    result["players"] = GetPlayers(session);
-    result["lostObjects"] = GetLostObjects(session);
+    result["players"] = GetPlayers(tokens_.GetPlayersBySession(session));
+    result["lostObjects"] = GetLostObjects(session->GetLootObjects());
 
     return json::serialize(result);
 }

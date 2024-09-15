@@ -100,42 +100,25 @@ enum class GatheringEventType{
 using Event = std::pair<GatheringEvent, GatheringEventType>;
 std::vector<Event> MixEvents(std::vector<GatheringEvent> collectings, std::vector<GatheringEvent> deliverings){
     std::vector<Event> result;
-
-    /* 
-        Случаи, когда произошли события 
-        только с подбором предмета, 
-        либо только с доставкой предмета
-    */
-    if(deliverings.empty()){
-        for(GatheringEvent collecting : collectings){
-            result.emplace_back(std::move(collecting), GatheringEventType::DOG_COLLECT_ITEM);
-        }
-        return result;
-    } else if(collectings.empty()) {
-        for(GatheringEvent delivering : deliverings){
-            result.emplace_back(std::move(delivering), GatheringEventType::DOG_DELIVER_ALL_ITEMS);
-        }
-        return result;
-    }
-
-    auto compare = [](const GatheringEvent& collecting, const GatheringEvent& delivering){
-        return collecting.time < delivering.time;
-    };
+    size_t collectings_count = collectings.size();
+    size_t deliverings_count = deliverings.size();
     
-    int i = 0;
-    int j = 0;
-    while(i < collectings.size() || j < deliverings.size()){
-        bool compare_result = compare(collectings[i], deliverings[j]);
-        GatheringEvent event = (compare_result ? collectings[i] : deliverings[j]);
-        GatheringEventType type = (compare_result ? GatheringEventType::DOG_COLLECT_ITEM : GatheringEventType::DOG_DELIVER_ALL_ITEMS);
+    result.resize(collectings_count + deliverings_count);
 
-        result.emplace_back(event, type);
-        if(compare_result){
-            ++i;
-        } else {
-            ++j;
-        }
-    }
+    /* Сначала размещаем все события, относящиеся к подбору объекта*/
+    std::transform(collectings.cbegin(), collectings.cend(), result.begin(), [](const GatheringEvent& event){
+        return Event{event, GatheringEventType::DOG_COLLECT_ITEM};
+    });
+
+    /* Потом размещаем события, в которым относит все объекты */
+    std::transform(deliverings.cbegin(), deliverings.cend(), result.begin() + collectings_count , [](const GatheringEvent& event){
+        return Event{event, GatheringEventType::DOG_DELIVER_ALL_ITEMS};
+    });
+
+    /* Сортируем в хронологическом порядке */
+    std::sort(result.begin(), result.end(),[](const Event& lhs, const Event& rhs){
+        return lhs.first.time < rhs.first.time;
+    });
 
     return result;
 }
@@ -368,18 +351,18 @@ void Game::AddMap(Map&& map) {
     }
 }
 
-GameSession* Game::AddSession(const Map::Id& id){
-    if(const Map* map = FindMap(id); map != nullptr){
-        GameSession* session = &(map_id_to_sessions_[id].emplace_back(map));
+GameSession* Game::AddSession(const Map::Id& map_id){
+    if(const Map* map = FindMap(map_id); map != nullptr){
+        GameSession* session = &(map_id_to_sessions_[map_id].emplace_back(map));
         return session;
     }
     return nullptr;
 }
 
-GameSession* Game::SessionIsExists(const Map::Id& id){
-    if(const Map* map = FindMap(id); map != nullptr){
-        if(!map_id_to_sessions_[id].empty()){
-            GameSession* session = &(map_id_to_sessions_[id].back());
+GameSession* Game::SessionIsExists(const Map::Id& map_id){
+    if(const Map* map = FindMap(map_id); map != nullptr){
+        if(!map_id_to_sessions_[map_id].empty()){
+            GameSession* session = &(map_id_to_sessions_[map_id].back());
             return session;
         }
     }

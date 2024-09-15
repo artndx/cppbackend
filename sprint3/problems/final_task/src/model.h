@@ -1,4 +1,5 @@
 #pragma once
+#include <algorithm>
 #include <string>
 #include <unordered_map>
 #include <set>
@@ -333,9 +334,9 @@ public:
 
     void AddMap(Map&& map);
 
-    GameSession* AddSession(const Map::Id& map);
+    GameSession* AddSession(const Map::Id& map_id);
 
-    GameSession* SessionIsExists(const Map::Id& id);
+    GameSession* SessionIsExists(const Map::Id& map_id);
 
     void SetLootGenerator(double period, double probability);
 

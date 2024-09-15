@@ -43,11 +43,11 @@ public:
 
     std::string IncreaseTime(double delta, Game& game);
 
-    void GenerateLoot(detail::Milliseconds delta, Game& game);
+    static void GenerateLoot(detail::Milliseconds delta, Game& game);
 private:
-    json::array GetBagItems(const Dog::Bag& bag_items) const;
-    json::object GetPlayers(const GameSession* session) const;
-    json::object GetLostObjects(const GameSession* session) const;
+    static json::array GetBagItems(const Dog::Bag& bag_items);
+    static json::object GetPlayers(const PlayerTokens::PlayersInSession& players_in_session);
+    static json::object GetLostObjects(const std::deque<Loot>& loots);
 
     int auto_counter_ = 0;
     Players& players_;
