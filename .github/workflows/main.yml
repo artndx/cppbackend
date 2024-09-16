@@ -11,7 +11,6 @@ permissions:
   pull-requests: write
   issues: read
 
-
 jobs:
   # sprint_1:
   #   runs-on: ubuntu-22.04
