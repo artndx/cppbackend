@@ -20,7 +20,7 @@ RUN apt update && \
 COPY conanfile.txt /app/
 COPY default.txt /root/.conan/profiles/
 RUN mkdir /app/build && cd /app/build && \
-    conan install .. -s compiler.libcxx=libstdc++11 -s build_type=Release --build=missing 
+    conan install .. -s compiler.libcxx=libstdc++11 --build=missing 
 # только после этого копируем остальные иходники
 COPY ./src /app/src
 COPY ./tests /app/tests
@@ -39,7 +39,7 @@ USER www
 
 # Скопируем приложение со сборочного контейнера в директорию /app.
 # Не забываем также папку data, она пригодится.
-COPY --from=build /app/build/game_server /app/
+COPY --from=build /app/build/bin/game_server /app/
 COPY ./data /app/data
 COPY ./static /app/static
 
