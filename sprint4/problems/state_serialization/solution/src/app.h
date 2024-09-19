@@ -123,7 +123,7 @@ public:
 
     void SaveState(){
         using namespace std::literals;
-        std::fstream fstrm(state_file_ + "_temp"s, std::ios::out);
+        std::fstream fstrm(state_file_ /*+ "_temp"s*/, std::ios::out);
         boost::archive::text_oarchive output_archive{fstrm};
         serialization::GameStateRepr writed_game_state(sessions_, players_);
         output_archive << writed_game_state;
