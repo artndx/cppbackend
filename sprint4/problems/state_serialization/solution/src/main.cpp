@@ -93,12 +93,12 @@ int main(int argc, const char* argv[]) {
         // 8. Сохраняем игровое состояние при выходе
         handler->SaveState();
 
-        // 9. Если был указан файл с сохранением игрового состояния, то в нем сохранятся данные лишь в конце работы сервера из временного файла
-        if(received_args.state_file.has_value()){
-            auto current = fs::path(received_args.state_file.value());
-            auto temp = fs::path(received_args.state_file.value() + "_temp"s);
-            std::filesystem::rename(temp, current);
-        }
+        // // 9. Если был указан файл с сохранением игрового состояния, то в нем сохранятся данные лишь в конце работы сервера из временного файла
+        // if(received_args.state_file.has_value()){
+        //     auto current = fs::path(received_args.state_file.value());
+        //     auto temp = fs::path(received_args.state_file.value() + "_temp"s);
+        //     std::filesystem::rename(temp, current);
+        // }
         
 
     } catch (const std::exception& ex) {
