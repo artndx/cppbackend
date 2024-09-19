@@ -118,8 +118,6 @@ public:
                 SaveState();
                 last_tick_ = Clock::now(); 
             }
-        } else {
-            SaveState();
         }
     }
 
@@ -241,7 +239,6 @@ public:
     }
 
     void LoadState(){
-        std::cout << "Loading...\n";
         if(state_save_.has_value()){
             auto game_state = state_save_.value().LoadState();
             for(const auto& [map_id, sessions] : game_state.GetAllSessions()){
@@ -264,9 +261,6 @@ public:
                 }
             }
         }
-        std::cout << "\tLoaded with\n";
-        std::cout << "\t" << players_.GetPlayers().size() << " players\n";
-
     }
 
     std::string IncreaseTime(double delta){
