@@ -115,9 +115,11 @@ public:
             Clock::time_point this_tick = Clock::now();
             auto delta = std::chrono::duration_cast<Milliseconds>(this_tick - last_tick_);
             if(delta >= FromInt(save_state_period_.value())){
-               SaveState();
+                SaveState();
                 last_tick_ = Clock::now(); 
             }
+        } else {
+            SaveState();
         }
     }
 
