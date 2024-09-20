@@ -38,4 +38,4 @@ COPY ./static /app/static
  
 # Запускаем игровой сервер
 
-ENTRYPOINT ["/app/game_server", "--config-file", "/app/data/config.json", "--www-root", "/app/static", "--state-file", "/app/state_saves/state_save"]
+ENTRYPOINT ["/app/game_server", "/app/data/config.json", "/app/static"]
