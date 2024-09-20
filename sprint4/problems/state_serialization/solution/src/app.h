@@ -110,13 +110,17 @@ public:
     players_(players),
     last_tick_(Clock::now()){}
 
-    void SaveOnTick(){
+    void SaveOnTick(bool is_periodic){
         if(save_state_period_.has_value()){
-            Clock::time_point this_tick = Clock::now();
-            auto delta = std::chrono::duration_cast<Milliseconds>(this_tick - last_tick_);
-            if(delta >= FromInt(save_state_period_.value())){
+            if(is_periodic){
+                Clock::time_point this_tick = Clock::now();
+                auto delta = std::chrono::duration_cast<Milliseconds>(this_tick - last_tick_);
+                if(delta >= FromInt(save_state_period_.value())){
+                    SaveState();
+                    last_tick_ = Clock::now(); 
+                }
+            } else {
                 SaveState();
-                last_tick_ = Clock::now(); 
             }
         }
     }
@@ -271,7 +275,7 @@ public:
             когда указан файл сохранения и период
         */
         if(state_save_.has_value()){
-            state_save_.value().SaveOnTick();
+            state_save_.value().SaveOnTick(tick_period_.has_value());
         }
         return res;
     }
