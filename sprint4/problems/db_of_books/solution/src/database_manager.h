@@ -25,7 +25,7 @@ public:
     : conn_{database_uri.data()}{
 
         pqxx::work w(conn_);
-        // w.exec("DROP TABLE books;"_zv);
+        w.exec("DROP TABLE books;"_zv);
         w.exec("CREATE TABLE IF NOT EXISTS books ("
                 "id SERIAL PRIMARY KEY NOT NULL," 
                 "title varchar(100) NOT NULL," 
