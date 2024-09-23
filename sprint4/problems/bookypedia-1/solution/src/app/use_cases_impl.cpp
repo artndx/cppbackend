@@ -27,7 +27,7 @@ std::vector<BookInfo> UseCasesImpl::ShowBooks() {
 
 std::vector<BookInfo> UseCasesImpl::ShowAuthorBooks(std::string_view author_id) {
     using namespace std::literals;
-    std::string query = "SELECT title, publication_year FROM books WHERE author_id = \'"s + author_id.data() + "\' ORDER BY title ASC;"s;
+    std::string query = "SELECT title, publication_year FROM books WHERE author_id = \'"s + author_id.data() + "\' ORDER BY publication_year ASC;"s;
     return books_.GetData(query);
 }
 
