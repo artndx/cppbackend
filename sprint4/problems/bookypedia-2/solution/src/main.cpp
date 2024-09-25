@@ -15,10 +15,10 @@ bookypedia::AppConfig GetConfigFromEnv() {
     if (const auto* url = std::getenv(DB_URL_ENV_NAME)) {
         config.db_url = url;
     } else {
-        // throw std::runtime_error(
-        //     DB_URL_ENV_NAME + " environment variable not found"s
-        // );
-        config.db_url = "postgres://postgres:postgres@localhost:5432/bookypedia";
+        throw std::runtime_error(
+            DB_URL_ENV_NAME + " environment variable not found"s
+        );
+        // config.db_url = "postgres://postgres:postgres@localhost:5432/bookypedia";
     }
     return config;
 }
