@@ -2,99 +2,97 @@
 #include <pqxx/connection>
 #include <pqxx/transaction>
 
+#include <vector>
+
 #include "../domain/author.h"
 #include "../domain/book.h"
-#include "../app/unit_of_work.h"
+
+#include "../ui/view.h"
+#include <memory>
 
 namespace postgres {
 
+class WorkerImpl : public domain::Worker {
+public:
+    WorkerImpl(pqxx::connection& connection);
+
+    ui::detail::AuthorInfo AddAuthor(const std::string& name) override;
+    ui::detail::BookInfo   AddBook(ui::detail::AddBookParams) override;
+    void AddTag(const std::string& book_id, const std::string& tag) override;
+
+    void DeleteAuthor(const ui::detail::AuthorInfo&, const std::vector<ui::detail::BookInfo>&) override;
+    void DeleteBook(const ui::detail::BookInfo& book) override;
+    void DeleteBookTags(const ui::detail::BookInfo& book) override;
+
+
+    void UpdateAuthor(const ui::detail::AuthorInfo&) override;
+    void UpdateBook(const ui::detail::BookInfo&) override;
+
+    void Commit() override;
+
+    ~WorkerImpl() override;
+
+private:
+    pqxx::connection& connection_;
+    pqxx::work work_;
+};
+
 class AuthorRepositoryImpl : public domain::AuthorRepository {
-  public:
-    explicit AuthorRepositoryImpl(pqxx::work& work) : work_(work) {}
+public:
+    explicit AuthorRepositoryImpl(pqxx::connection& connection)
+        : connection_{connection} {
+    }
 
     void Save(const domain::Author& author) override;
-    domain::Author GetAuthorById(const domain::AuthorId& id) override;
-    std::optional<domain::Author> GetAuthorByName(const std::string& name
-    ) override;
-    void EditAuthorName(const domain::AuthorId& id, const std::string& name)
-        override;
-    void Delete(const domain::AuthorId& id) override;
-    domain::Authors GetAllAuthors() override;
 
-  private:
-    pqxx::work& work_;
+    std::vector<ui::detail::AuthorInfo> Get() override;
+
+    std::optional<ui::detail::AuthorInfo> GetAuthorIdIfExists(const std::string& name) override;
+
+private:
+    pqxx::connection& connection_;
 };
 
 class BookRepositoryImpl : public domain::BookRepository {
-  public:
-    explicit BookRepositoryImpl(pqxx::work& work) : work_(work) {}
+public:
+    explicit BookRepositoryImpl(pqxx::connection& connection)
+        : connection_{connection} {
 
-    void Save(const domain::Book& book) override;
-    void Edit(
-        const domain::BookId& id,
-        const std::string& title,
-        int publication_year,
-        const domain::Tags& tags
-    ) override;
-    void Delete(const domain::BookId& id) override;
-    domain::Books GetAllBooks() override;
-    domain::Books GetBooksByAuthorId(const domain::AuthorId& id) override;
-
-  private:
-    domain::Tags GetBookTags(const domain::BookId& id);
-
-    pqxx::work& work_;
-};
-
-class UnitOfWorkImpl : public app::UnitOfWork {
-  public:
-    explicit UnitOfWorkImpl(pqxx::connection& connection) :
-        work_(connection),
-        authors_(work_),
-        books_(work_) {}
-
-    void Commit() override {
-        work_.commit();
     }
 
-    domain::AuthorRepository& Authors() override {
-        return authors_;
+    std::vector<ui::detail::BookInfo> GetAuthorBooks(const std::string& name) override;
+
+    std::shared_ptr<domain::Worker> GetWorker() override {
+        auto res = std::make_shared<WorkerImpl>(connection_);
+        return res;
     }
 
-    domain::BookRepository& Books() override {
-        return books_;
-    }
+    std::vector<ui::detail::BookInfo> GetBooks() override;
+    std::vector<ui::detail::BookInfo> GetBooksByTitle(const std::string&) override;
 
-  private:
-    pqxx::work work_;
-    AuthorRepositoryImpl authors_;
-    BookRepositoryImpl books_;
-};
+    std::vector<std::string> GetBookTags(const ui::detail::BookInfo& book) override;
 
-class UnitOfWorkFactoryImpl : public app::UnitOfWorkFactory {
-  public:
-    explicit UnitOfWorkFactoryImpl(pqxx::connection& connection) :
-        connection_(connection) {}
-
-    app::UnitOfWorkHolder CreateUnitOfWork() override {
-        return std::make_unique<UnitOfWorkImpl>(connection_);
-    }
-
-  private:
+private:
+    std::vector<ui::detail::BookInfo> GetBooksByQuery(const std::string&) override;
     pqxx::connection& connection_;
 };
 
 class Database {
-  public:
+public:
     explicit Database(pqxx::connection connection);
 
-    app::UnitOfWorkFactory& GetUnitOfWorkFactory() {
-        return unit_factory_;
+    AuthorRepositoryImpl& GetAuthors() & {
+        return authors_;
     }
 
-  private:
+    BookRepositoryImpl& GetBooks() & {
+        return books_;
+    }
+
+private:
     pqxx::connection connection_;
-    UnitOfWorkFactoryImpl unit_factory_ {connection_};
+    AuthorRepositoryImpl authors_{connection_};
+    BookRepositoryImpl     books_{connection_};
 };
 
 }  // namespace postgres

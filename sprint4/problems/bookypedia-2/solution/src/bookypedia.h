@@ -11,14 +11,14 @@ struct AppConfig {
 };
 
 class Application {
-  public:
+public:
     explicit Application(const AppConfig& config);
 
     void Run();
 
-  private:
+private:
     postgres::Database db_;
-    app::UseCasesImpl use_cases_ {db_.GetUnitOfWorkFactory()};
+    app::UseCasesImpl use_cases_{db_.GetAuthors(), db_.GetBooks()};
 };
 
 }  // namespace bookypedia

@@ -1,19 +1,24 @@
 #pragma once
 #include <string>
 #include <vector>
-#include <optional>
 
 #include "../util/tagged_uuid.h"
+#include "../ui/view.h"
 
 namespace domain {
 
-using AuthorId = util::TaggedUUID<class AuthorTag>;
+namespace detail {
+struct AuthorTag {};
+}  // namespace detail
+
+using AuthorId = util::TaggedUUID<detail::AuthorTag>;
 
 class Author {
-  public:
-    Author(AuthorId id, std::string name) :
-        id_(std::move(id)),
-        name_(std::move(name)) {}
+public:
+    Author(AuthorId id, std::string name)
+        : id_(std::move(id))
+        , name_(std::move(name)) {
+    }
 
     const AuthorId& GetId() const noexcept {
         return id_;
@@ -23,28 +28,17 @@ class Author {
         return name_;
     }
 
-    void SetName(std::string name) {
-        name_ = std::move(name);
-    }
-
-  private:
+private:
     AuthorId id_;
     std::string name_;
 };
 
-using Authors = std::vector<Author>;
-
 class AuthorRepository {
-  public:
+public:
     virtual void Save(const Author& author) = 0;
-    virtual void Delete(const AuthorId& id) = 0;
-    virtual Author GetAuthorById(const AuthorId& id) = 0;
-    virtual std::optional<Author> GetAuthorByName(const std::string& name) = 0;
-    virtual void
-    EditAuthorName(const AuthorId& id, const std::string& name) = 0;
-    virtual Authors GetAllAuthors() = 0;
-
-  protected:
+    virtual std::vector<ui::detail::AuthorInfo> Get() = 0;
+    virtual std::optional<ui::detail::AuthorInfo> GetAuthorIdIfExists(const std::string& name) = 0;
+protected:
     ~AuthorRepository() = default;
 };
 

@@ -1,30 +1,26 @@
 #pragma once
-
 #include <functional>
 #include <iosfwd>
 #include <map>
 #include <string>
+#include <utility>
 
 namespace menu {
 
 class Menu {
-  public:
+public:
     using Handler = std::function<bool(std::istream&)>;
 
     Menu(std::istream& input, std::ostream& output);
 
-    void AddAction(
-        std::string action_name,
-        std::string args,
-        std::string description,
-        Handler handler
-    );
+    void AddAction(std::string action_name, std::string args, std::string description,
+                   Handler handler);
 
     void Run();
 
     void ShowInstructions() const;
 
-  private:
+private:
     struct ActionInfo {
         Handler handler;
         std::string args;

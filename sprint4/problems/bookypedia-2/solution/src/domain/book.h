@@ -1,86 +1,82 @@
 #pragma once
 #include <string>
-#include <vector>
 
 #include "../util/tagged_uuid.h"
 #include "author.h"
+#include <memory>
 
 namespace domain {
 
-using BookId = util::TaggedUUID<class BookTag>;
-using Tags = std::vector<std::string>;
+namespace detail {
+struct BookTag {};
+}  // namespace detail
+
+using BookId = util::TaggedUUID<detail::BookTag>;
+
+class Worker {
+public:
+    virtual ui::detail::AuthorInfo AddAuthor(const std::string& name) = 0;
+    virtual ui::detail::BookInfo   AddBook(ui::detail::AddBookParams) = 0;
+    virtual void AddTag(const std::string& book_id, const std::string& tag) = 0;
+    virtual void DeleteAuthor(const ui::detail::AuthorInfo&, const std::vector<ui::detail::BookInfo>&) = 0;
+    virtual void DeleteBook(const ui::detail::BookInfo&) = 0;
+    virtual void DeleteBookTags(const ui::detail::BookInfo&) = 0;
+
+    virtual void UpdateAuthor(const ui::detail::AuthorInfo&) = 0;
+    virtual void UpdateBook(const ui::detail::BookInfo&) = 0;
+
+
+
+    virtual void Commit() = 0;
+protected:
+    virtual ~Worker() = default;
+};
+
 
 class Book {
-  public:
-    Book(
-        BookId id,
-        AuthorId author_id,
-        std::string title,
-        int publication_year,
-        Tags tags
-    ) :
-        id_(std::move(id)),
-        author_id_(std::move(author_id)),
-        title_(std::move(title)),
-        publication_year_(std::move(publication_year)),
-        tags_(std::move(tags)) {}
+public:
+    Book(BookId id, AuthorId auth_id, std::string title, int year)
+        : id_(std::move(id))
+        , auth_id_(auth_id)
+        , title_(std::move(title))
+        , year_(year){
+    }
 
-    const BookId& GetId() const noexcept {
+    const BookId& GetBookId() const noexcept {
         return id_;
     }
 
     const AuthorId& GetAuthorId() const noexcept {
-        return author_id_;
+        return auth_id_;
     }
 
     const std::string& GetTitle() const noexcept {
         return title_;
     }
 
-    void SetTitle(std::string title) {
-        title_ = std::move(title);
+    const int GetYear() const noexcept {
+        return year_;
     }
 
-    const int GetPublicationYear() const noexcept {
-        return publication_year_;
-    }
-
-    void SetPublicationYear(int publication_year) {
-        publication_year_ = publication_year;
-    }
-
-    const Tags& GetTags() const noexcept {
-        return tags_;
-    }
-
-    void SetTags(Tags tags) {
-        tags_ = std::move(tags);
-    }
-
-  private:
+private:
     BookId id_;
-    AuthorId author_id_;
+    AuthorId auth_id_;
     std::string title_;
-    int publication_year_;
-    Tags tags_;
+    int year_;
 };
 
-using Books = std::vector<Book>;
-
 class BookRepository {
-  public:
-    virtual void Save(const Book& author) = 0;
-    virtual void Edit(
-        const BookId& id,
-        const std::string& title,
-        int publication_year,
-        const Tags& tags
-    ) = 0;
-    virtual void Delete(const BookId& id) = 0;
-    virtual Books GetAllBooks() = 0;
-    virtual Books GetBooksByAuthorId(const AuthorId& id) = 0;
+public:
+    virtual std::vector<ui::detail::BookInfo> GetBooks() = 0;
+    virtual std::vector<ui::detail::BookInfo> GetAuthorBooks(const std::string&) = 0;
+    virtual std::vector<ui::detail::BookInfo> GetBooksByTitle(const std::string&) = 0;
 
-  protected:
+    virtual std::vector<std::string> GetBookTags(const ui::detail::BookInfo& book) = 0;
+
+    virtual std::shared_ptr<Worker> GetWorker() = 0;
+
+protected:
+    virtual std::vector<ui::detail::BookInfo> GetBooksByQuery(const std::string&) = 0;
     ~BookRepository() = default;
 };
 

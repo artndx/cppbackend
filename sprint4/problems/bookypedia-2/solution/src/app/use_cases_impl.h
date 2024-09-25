@@ -1,42 +1,46 @@
 #pragma once
 #include "../domain/author_fwd.h"
-#include "unit_of_work.h"
+#include "../domain/book_fwd.h"
 #include "use_cases.h"
 
 namespace app {
 
 class UseCasesImpl : public UseCases {
-  public:
-    explicit UseCasesImpl(UnitOfWorkFactory& unit_factory) :
-        unit_factory_(unit_factory) {}
+public:
+    explicit UseCasesImpl(domain::AuthorRepository& authors, domain::BookRepository& books);
 
     void AddAuthor(const std::string& name) override;
-    domain::Author GetAuthorById(const domain::AuthorId& id) override;
-    std::optional<domain::Author> GetAuthorByName(const std::string& name
-    ) override;
-    void EditAuthorName(const domain::AuthorId& id, const std::string& name)
-        override;
-    void DeleteAuthor(const domain::AuthorId& id) override;
-    domain::Authors GetAllAuthors() override;
 
-    void AddBook(
-        const domain::AuthorId& author_id,
-        const std::string& title,
-        int year,
-        const domain::Tags& tags
-    ) override;
-    void EditBook(
-        const domain::BookId& id,
-        const std::string& title,
-        int year,
-        const domain::Tags& tags
-    ) override;
-    void DeleteBook(const domain::BookId& id) override;
-    domain::Books GetAllBooks() override;
-    domain::Books GetBooksByAuthorId(const domain::AuthorId& id) override;
+    std::vector<ui::detail::AuthorInfo> GetAuthors() override;
 
-  private:
-    UnitOfWorkFactory& unit_factory_;
+    void AddBook(const ui::detail::AddBookParams& params) override;
+
+    std::vector<ui::detail::BookInfo> GetBooks() override;
+
+    std::vector<ui::detail::BookInfo> GetAuthorBooks(const std::string& name) override;
+
+    void AddBookAuthorAndTags(const std::string& author_name,
+                              ui::detail::AddBookParams params,
+                              const std::vector<std::string>& tags) override;
+
+    void AddBookAndTags(const ui::detail::AddBookParams& params, const std::vector<std::string>& tags) override;
+
+    std::optional<ui::detail::AuthorInfo> GetAuthorIdIfExists(const std::string& name) override;
+
+    std::vector<ui::detail::BookInfo> GetBooksByTitle(const std::string& title) override;
+
+    std::vector<std::string> GetBookTags(const ui::detail::BookInfo& title) override;
+
+    void DeleteBook(const ui::detail::BookInfo& book) override;
+
+    void DeleteAuthor(const ui::detail::AuthorInfo& author,
+                      const std::vector<ui::detail::BookInfo>& books) override;
+
+    void UpdateAuthor(const ui::detail::AuthorInfo&) override;
+    void UpdateBook(const ui::detail::BookInfo&, const std::vector<std::string>&) override;
+private:
+    domain::AuthorRepository& authors_;
+    domain::BookRepository& books_;
 };
 
 }  // namespace app
