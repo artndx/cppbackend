@@ -189,9 +189,9 @@ public:
             auto conn = connection_pool_.GetConnection();
             pqxx::work work{*conn};
 
-            work.exec(R"(
-                DROP TABLE IF EXISTS retired_players;
-                )"_zv);
+            // work.exec(R"(
+            //     DROP TABLE IF EXISTS retired_players;
+            //     )"_zv);
 
             work.exec(R"(
                 CREATE TABLE IF NOT EXISTS retired_players (
