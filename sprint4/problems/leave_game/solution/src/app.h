@@ -202,7 +202,7 @@ public:
                 );
                 )"_zv);
             work.exec(R"(
-                    CREATE INDEX score_time_name_idx ON retired_players (score, time, name DESC);
+                    CREATE INDEX IF NOT EXISTS score_time_name_idx ON retired_players (score, time, name DESC);
             )");
             work.commit();
         }
