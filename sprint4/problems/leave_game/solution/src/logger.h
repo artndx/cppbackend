@@ -63,7 +63,7 @@ private:
 };
 
 static const std::unordered_map<LOG_MESSAGES, std::string> STR_MESSAGES {
-    {LOG_MESSAGES::SERVER_STARTED, "server started"},
+    {LOG_MESSAGES::SERVER_STARTED, "Server has started..."},
     {LOG_MESSAGES::SERVER_EXITED, "server exited"},
     {LOG_MESSAGES::REQUEST_RECEIVED, "request received"},
     {LOG_MESSAGES::RESPONSE_SENT, "response sent"},

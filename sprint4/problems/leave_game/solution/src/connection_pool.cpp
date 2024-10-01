@@ -37,7 +37,7 @@ inline ConnectionPool::ConnectionPtr ConnectionFactory(const char* db_url){
                         )");
     conn->prepare("select", R"(
                         SELECT name, score, time FROM retired_players 
-                        ORDER BY score, time, name DESC 
+                        ORDER BY score DESC, time, name 
                         LIMIT $1 
                         OFFSET $2;
                         )");
@@ -47,27 +47,7 @@ inline ConnectionPool::ConnectionPtr ConnectionFactory(const char* db_url){
 /* ------------------------ DatabaseManager ----------------------------------- */
 
 DatabaseManager::DatabaseManager(size_t capacity, const char* db_url)
-:connection_pool_(capacity, ConnectionFactory, db_url){
-    auto conn = connection_pool_.GetConnection();
-    pqxx::work work{*conn};
-
-    // work.exec(R"(
-    //     DROP TABLE IF EXISTS retired_players;
-    //     )"_zv);
-
-    work.exec(R"(
-        CREATE TABLE IF NOT EXISTS retired_players (
-            id SERIAL PRIMARY KEY,
-            name varchar(100) NOT NULL,
-            score integer NOT NULL,
-            time real NOT NULL
-        );
-        )"_zv);
-    work.exec(R"(
-            CREATE INDEX IF NOT EXISTS score_time_name_idx ON retired_players (score DESC, time, name);
-    )");
-    work.commit();
-}
+:connection_pool_(capacity, ConnectionFactory, db_url){}
 
 pqxx::result DatabaseManager::SelectData(unsigned start, unsigned max_items){
     auto conn = connection_pool_.GetConnection();

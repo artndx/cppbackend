@@ -15,6 +15,37 @@ namespace fs =  std::filesystem;
 
 namespace {
 
+void CreateTable(const char* db_url){
+    using pqxx::operator""_zv;
+    using namespace std::literals;
+
+    auto initial_connection_factory = [](const char* db_url){
+        auto conn = std::make_shared<pqxx::connection>(db_url);
+        return conn;
+    };
+
+    db_connection::ConnectionPool connection_pool_(1, initial_connection_factory, db_url);
+    auto conn = connection_pool_.GetConnection();
+    pqxx::work work{*conn};
+
+    // work.exec(R"(
+    //     DROP TABLE IF EXISTS retired_players;
+    //     )"_zv);
+
+    work.exec(R"(
+        CREATE TABLE IF NOT EXISTS retired_players (
+            id SERIAL PRIMARY KEY,
+            name varchar(100) NOT NULL,
+            score integer NOT NULL,
+            time real NOT NULL
+        );
+        )"_zv);
+    work.exec(R"(
+            CREATE INDEX IF NOT EXISTS score_time_name_idx ON retired_players (score DESC, time, name);
+    )");
+    work.commit();
+}
+
 // Запускает функцию fn на n потоках, включая текущий
 template <typename Fn>
 void RunWorkers(unsigned n, const Fn& fn) {
@@ -50,6 +81,7 @@ int main(int argc, const char* argv[]) {
         if (!DB_URL) {
             throw std::runtime_error("GAME_DB_URL is not specified");
         }
+        CreateTable(DB_URL);
         auto db_manager = std::make_unique<db_connection::DatabaseManager>(NUM_THREADS, DB_URL);
 
         const cmd_parser::Args& received_args = args.value();
@@ -87,7 +119,6 @@ int main(int argc, const char* argv[]) {
         
 
         // Эта надпись сообщает тестам о том, что сервер запущен и готов обрабатывать запросы
-        std::cout << "Server has started..."sv << std::endl;
         LOG_SERVER_START(port, address.to_string());
 
         // 7. Запускаем обработку асинхронных операций
