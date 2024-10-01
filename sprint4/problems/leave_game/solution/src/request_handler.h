@@ -12,7 +12,6 @@
 #include <unordered_map>
 #include <optional>
 
-
 namespace request_handler {
 
 using namespace app;
@@ -21,6 +20,7 @@ using namespace std::literals;
 namespace beast = boost::beast;
 namespace http = beast::http;
 namespace fs = std::filesystem;
+
 
 namespace detail{
 
@@ -156,8 +156,9 @@ private:
                         std::optional<unsigned> tick_period, 
                         std::optional<std::string> state_file, 
                         std::optional<unsigned> save_state_period, 
-                        bool randomize_spawn_points)
-        : app_(game, api_strand, tick_period, state_file, save_state_period, randomize_spawn_points){}
+                        bool randomize_spawn_points,
+                        DatabaseManagerPtr&& db_manager)
+        : app_(game, api_strand, tick_period, state_file, save_state_period, randomize_spawn_points, std::move(db_manager)){}
 
     Strand& GetStrand(){
         return app_.GetStrand();
@@ -492,9 +493,9 @@ private:
 
 class RequestHandler : public std::enable_shared_from_this<RequestHandler>{
 public:
-    explicit RequestHandler(model::Game& game, const cmd_parser::Args& args, Strand api_strand)
+    explicit RequestHandler(model::Game& game, const cmd_parser::Args& args, Strand api_strand, DatabaseManagerPtr&& db_manager)
         : game_{game}, 
-        api_handler_{game, api_strand, args.tick_period, args.state_file, args.save_state_period, args.randomize_spawn_points},
+        api_handler_{game, api_strand, args.tick_period, args.state_file, args.save_state_period, args.randomize_spawn_points, std::move(db_manager)},
         file_handler_{args.www_root}{}
 
     RequestHandler(const RequestHandler&) = delete;

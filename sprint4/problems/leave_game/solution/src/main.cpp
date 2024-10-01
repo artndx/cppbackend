@@ -3,7 +3,6 @@
 #include <boost/asio/io_context.hpp>
 #include <boost/asio/signal_set.hpp>
 #include <thread>
-#include "global.h"
 
 #include "json_loader.h"
 #include "request_handler.h"
@@ -46,18 +45,19 @@ int main(int argc, const char* argv[]) {
     }
 
     try {
+        const static unsigned NUM_THREADS = std::thread::hardware_concurrency();
+        const char* DB_URL = std::getenv("GAME_DB_URL");
+        if (!DB_URL) {
+            throw std::runtime_error("DB URL is not specified");
+        }
+        auto db_manager = std::make_unique<db_connection::DatabaseManager>(NUM_THREADS, DB_URL);
+
         const cmd_parser::Args& received_args = args.value();
-        
         // 1. Загружаем карту из файла и построить модель игры
         model::Game game = json_loader::LoadGame(received_args.config_file);
 
         // 2. Инициализируем io_context
         net::io_context ioc(NUM_THREADS);
-        DB_URL = std::getenv("GAME_DB_URL");
-        NUM_THREADS = std::thread::hardware_concurrency();
-        if (!DB_URL) {
-            throw std::runtime_error("DB URL is not specified");
-        }
 
         // 3. Добавляем асинхронный обработчик сигналов SIGINT и SIGTERM
         net::signal_set signals(ioc, SIGINT, SIGTERM);
@@ -71,7 +71,7 @@ int main(int argc, const char* argv[]) {
         // 4. Создаём обработчик HTTP-запросов и связываем его с моделью игры. 
         //    А также устанавливаем слушаетеля, который сохраняет (сериализует) состояние
         //    игры синхронно ходу игровым часам.
-        std::shared_ptr<request_handler::RequestHandler> handler = std::make_shared<request_handler::RequestHandler>(game, received_args, net::make_strand(ioc));
+        std::shared_ptr<request_handler::RequestHandler> handler = std::make_shared<request_handler::RequestHandler>(game, received_args, net::make_strand(ioc), std::move(db_manager));
 
         // 5. Если был указан файл с сохранением игрового состояния, 
         //    то нужно попытаться восстанавливать его.

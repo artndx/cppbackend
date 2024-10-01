@@ -78,31 +78,6 @@ Milliseconds PlayerTimeClock::GetPlaytime() const{
     return duration_cast<Milliseconds>(current_playtime - log_in_time_);
 }
 
-/* ------------------------ ConnectionPool ----------------------------------- */
-
-ConnectionPool::ConnectionWrapper ConnectionPool::GetConnection() {
-    std::unique_lock lock{mutex_};
-    // Блокируем текущий поток и ждём, пока cond_var_ не получит уведомление и не освободится
-    // хотя бы одно соединение
-    cond_var_.wait(lock, [this] {
-        return used_connections_ < pool_.size();
-    });
-    // После выхода из цикла ожидания мьютекс остаётся захваченным
-
-    return {std::move(pool_[used_connections_++]), *this};
-}
-
-void ConnectionPool::ReturnConnection(ConnectionPtr&& conn) {
-    // Возвращаем соединение обратно в пул
-    {
-        std::lock_guard lock{mutex_};
-        assert(used_connections_ != 0);
-        pool_[--used_connections_] = std::move(conn);
-    }
-    // Уведомляем один из ожидающих потоков об изменении состояния пула
-    cond_var_.notify_one();
-}
-
 } // namespace detail
 
 /* ------------------------ GetMapUseCase ----------------------------------- */
@@ -326,9 +301,7 @@ void GameUseCase::GenerateLoot(Milliseconds delta, Game& game){
 std::string GameUseCase::GetRecords(unsigned start, unsigned max_items){
     json::array records;
 
-    auto conn = connection_pool_.GetConnection();
-    pqxx::read_transaction rt{*conn};
-    auto res = rt.exec_prepared("select", max_items, start);
+    auto res = db_manager_->SelectData(start, max_items);
     for(const auto& [name, score, time] : res.iter<std::string, unsigned, double>()){
         json::object entry;
         entry["name"] = name;
@@ -426,11 +399,7 @@ void GameUseCase::SaveScore(const Player* player){
     unsigned score = player->GetDog()->GetScore();
     double time = static_cast<double>(clocks_.at(player).GetPlaytime().count()) / 1000;
     
-    auto conn = connection_pool_.GetConnection();
-    pqxx::work w{*conn};
-    w.exec_prepared("insert", name, score , time);
-
-    w.commit();
+    db_manager_->InsertData(name, score, time);
 }
 
 void GameUseCase::DisconnectPlayer(const Player* player, Game& game){

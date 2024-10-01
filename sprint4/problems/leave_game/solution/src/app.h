@@ -8,13 +8,10 @@
 #include <sstream>
 #include <optional>
 #include <functional>
-#include <memory>
-#include <mutex>
-#include <condition_variable>
 #include <fstream>
 #include "player.h"
 #include "model_serialization.h"
-#include "global.h"
+#include "connection_pool.h"
 
 namespace app{
 
@@ -23,10 +20,9 @@ namespace net = boost::asio;
 namespace sys = boost::system;
 using Strand = net::strand<net::io_context::executor_type>;
 using Clock = std::chrono::steady_clock;
-using pqxx::operator""_zv;
-using namespace std::literals;
 using namespace model::detail;
 using namespace model;
+using DatabaseManagerPtr = std::unique_ptr<db_connection::DatabaseManager>;
 
 namespace detail{
 
@@ -79,81 +75,6 @@ private:
     std::optional<Clock::time_point> current_inactivity_time_;
 };
 
-/* ------------------------ ConnectionPool ----------------------------------- */
-
-class ConnectionPool {
-public:
-    using PoolType = ConnectionPool;
-    using ConnectionPtr = std::shared_ptr<pqxx::connection>;
-    class ConnectionWrapper {
-    public:
-        ConnectionWrapper(std::shared_ptr<pqxx::connection>&& conn, PoolType& pool) noexcept
-            : conn_{std::move(conn)}
-            , pool_{&pool} {
-        }
-
-        ConnectionWrapper(const ConnectionWrapper&) = delete;
-        ConnectionWrapper& operator=(const ConnectionWrapper&) = delete;
-
-        ConnectionWrapper(ConnectionWrapper&&) = default;
-        ConnectionWrapper& operator=(ConnectionWrapper&&) = default;
-
-        pqxx::connection& operator*() const& noexcept {
-            return *conn_;
-        }
-        pqxx::connection& operator*() const&& = delete;
-
-        pqxx::connection* operator->() const& noexcept {
-            return conn_.get();
-        }
-
-        ~ConnectionWrapper() {
-            if (conn_) {
-                pool_->ReturnConnection(std::move(conn_));
-            }
-        }
-
-    private:
-        std::shared_ptr<pqxx::connection> conn_;
-        PoolType* pool_;
-    };
-
-    // ConnectionFactory is a functional object returning std::shared_ptr<pqxx::connection>
-    template <typename ConnectionFactory>
-    ConnectionPool(size_t capacity, ConnectionFactory&& connection_factory){
-        pool_.reserve(capacity);
-        for (size_t i = 0; i < capacity; ++i) {
-            pool_.emplace_back(connection_factory());
-        }
-    }
-
-    ConnectionWrapper GetConnection();
-
-private:
-    void ReturnConnection(ConnectionPtr&& conn);
-
-    std::mutex mutex_;
-    std::condition_variable cond_var_;
-    std::vector<ConnectionPtr> pool_;
-    size_t used_connections_ = 0;
-};
-
-/* ------------------------ ConnectionFactory ----------------------------------- */
-
-inline ConnectionPool::ConnectionPtr ConnectionFactory(){
-    auto conn = std::make_shared<pqxx::connection>(DB_URL);
-    conn->prepare("insert", R"(
-                        INSERT INTO retired_players (name, score, time) VALUES ($1, $2, $3);
-                        )");
-    conn->prepare("select", R"(
-                        SELECT name, score, time FROM retired_players 
-                        ORDER BY score, time, name DESC 
-                        LIMIT $1 
-                        OFFSET $2;
-                        )");
-    return conn;
-}
-
 } // namespace detail
 
 /* ------------------------ Use Cases ----------------------------------- */
@@ -184,28 +105,8 @@ class GameUseCase{
 public:
     using PlayerTimeClocks = std::unordered_map<const Player*, detail::PlayerTimeClock>;
     
-    GameUseCase(Players& players, PlayerTokens& tokens)
-        : players_(players), tokens_(tokens), connection_pool_(NUM_THREADS, detail::ConnectionFactory){
-            auto conn = connection_pool_.GetConnection();
-            pqxx::work work{*conn};
-
-            // work.exec(R"(
-            //     DROP TABLE IF EXISTS retired_players;
-            //     )"_zv);
-
-            work.exec(R"(
-                CREATE TABLE IF NOT EXISTS retired_players (
-                    id SERIAL PRIMARY KEY,
-                    name varchar(100) NOT NULL,
-                    score integer NOT NULL,
-                    time real NOT NULL
-                );
-                )"_zv);
-            work.exec(R"(
-                    CREATE INDEX IF NOT EXISTS score_time_name_idx ON retired_players (score, time, name DESC);
-            )");
-            work.commit();
-        }
+    GameUseCase(Players& players, PlayerTokens& tokens, DatabaseManagerPtr&& db_manager)
+        : players_(players), tokens_(tokens), db_manager_(std::move(db_manager)){}
 
     std::string JoinGame(const std::string& user_name, const std::string& str_map_id, 
                             Game& game, bool is_random_spawn_enabled);
@@ -231,7 +132,7 @@ private:
     Players& players_;
     PlayerTokens& tokens_;
     PlayerTimeClocks clocks_;
-    detail::ConnectionPool connection_pool_;
+    DatabaseManagerPtr db_manager_;
 };
 
 /* ------------------------ ListPlayersUseCase ----------------------------------- */
@@ -306,13 +207,14 @@ public:
                 std::optional<unsigned> tick_period, 
                 std::optional<std::string> state_file, 
                 std::optional<unsigned> save_state_period,
-                bool randomize_spawn_points)
+                bool randomize_spawn_points,
+                DatabaseManagerPtr&& db_manager)
         : 
         game_(game), 
         api_strand_(api_strand),
         tick_period_(tick_period), 
         rand_spawn_(randomize_spawn_points), players_(), tokens_(), 
-        game_handler_(players_, tokens_), time_ticker_(), loot_ticker_(){
+        game_handler_(players_, tokens_, std::move(db_manager)), time_ticker_(), loot_ticker_(){
             /* Перед началом работы приложения всегда генерируется начальный лут*/
             GenerateLoot(Milliseconds{0});
 
