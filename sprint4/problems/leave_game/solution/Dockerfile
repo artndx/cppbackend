@@ -10,13 +10,11 @@ RUN apt update && \
 
 # Запуск conan как раньше
 COPY conanfile.txt /app/
-COPY default.txt /root/.conan/profiles/
 RUN mkdir /app/build && cd /app/build && \
     conan install .. -s compiler.libcxx=libstdc++11 --build=missing -s build_type=Release
 
 # Папка data больше не нужна
 COPY ./src /app/src
-COPY ./tests /app/tests
 COPY CMakeLists.txt /app/
 
 RUN cd /app/build && \

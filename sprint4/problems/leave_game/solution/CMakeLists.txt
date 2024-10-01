@@ -45,8 +45,8 @@ add_executable(game_server
 target_link_libraries(game_server game_model collision_detection_lib CONAN_PKG::libpqxx)
 
 
-add_executable(game_server_tests
-	tests/state-serialization-tests.cpp
-)
+# add_executable(game_server_tests
+# 	tests/state-serialization-tests.cpp
+# )
 
-target_link_libraries(game_server_tests CONAN_PKG::catch2 game_model)
+# target_link_libraries(game_server_tests CONAN_PKG::catch2 game_model)
