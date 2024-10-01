@@ -1,167 +1,174 @@
 #include "json_loader.h"
-
-#include <iostream>
+#include "tagged.h"
 #include <fstream>
-#include <sstream>
+#include <iostream>
 #include <stdexcept>
 
-using namespace model;
+namespace json_loader
+{
 
-namespace json_loader {
+	void ParseRoads(model::Map& map, json::object& parent_object)
+	{
+		for (auto road_entry : parent_object.at("roads").as_array())
+		{
+			json::object road_data = road_entry.as_object();
 
-int GetInt(std::string key, const json::object& obj){
-    return static_cast<int>(obj.at(key).as_int64());
-}
+			if (road_data.contains(X1_COORDINATE))
+			{
+				model::Road road(
+					{
+						model::Road::HORIZONTAL, 
+						{static_cast<int>(road_data.at(X0_COORDINATE).as_int64()), static_cast<int>(road_data.at(Y0_COORDINATE).as_int64())},
+						static_cast<int>(road_data.at(X1_COORDINATE).as_int64())
+					});
 
-std::string GetString(std::string key, const json::object& obj){
-    std::string result = json::serialize(obj.at(key));
-    return result.substr(1, result.size() - 2);
-}
+				map.AddRoad(std::move(road));
+			}
+			else
+			{
+				model::Road road(
+					{
+						model::Road::VERTICAL,
+						{static_cast<int>(road_data.at(X0_COORDINATE).as_int64()), static_cast<int>(road_data.at(Y0_COORDINATE).as_int64())},
+						static_cast<int>(road_data.at(Y1_COORDINATE).as_int64())
+					});
 
-void AddRoadsFromJson(const json::object& json_map, Map& map){
-    json::array json_roads = json_map.at("roads").as_array();
+				map.AddRoad(std::move(road));
+			}
 
-    for(const json::value& value : json_roads){
-        json::object json_road = value.as_object();
+		}
+		map.CalcRoads();
+	}
 
-        Point point{GetInt("x0", json_road), GetInt("y0", json_road)};
 
-        if(json_road.contains("x1")){
-            map.AddRoad(Road{Road::HORIZONTAL, point, GetInt("x1", json_road)});
-        } else if(json_road.contains("y1")){
-            map.AddRoad(Road{Road::VERTICAL, point, GetInt("y1", json_road)});
-        }
-    }
-}
+	void ParseBuildings(model::Map& map, json::object& parent_object)
+	{
+		for (auto building_entry : parent_object.at("buildings").as_array())
+		{
+			json::object building_data = building_entry.as_object();
 
-void AddBuildingsFromJson(const json::object& json_map, Map& map){
-    json::array buildings = json_map.at("buildings").as_array();
+			model::Building building(
+				{
+					{static_cast<int>(building_data.at(X_COORDINATE).as_int64()), static_cast<int>(building_data.at(Y_COORDINATE).as_int64())},
+					{static_cast<int>(building_data.at(WIDTH).as_int64()), static_cast<int>(building_data.at(HEIGHT).as_int64())}
+				});
 
-    for(const json::value& value : buildings){
-        json::object json_building = value.as_object();
-    
-        map.AddBuilding(Building{Rectangle{
-                        {GetInt("x", json_building), GetInt("y", json_building)},
-                        {GetInt("w", json_building), GetInt("h", json_building)}
-                        }});
-    }
-}
+			map.AddBuilding(std::move(building));
+		}
+	}
 
-void AddOfficesFromJson(const json::object& json_map, Map& map){
-    json::array offices = json_map.at("offices").as_array();
-    for(const json::value& value : offices){
-        json::object json_office = value.as_object();
-    
-        map.AddOffice(Office{
-                        Office::Id{GetString("id", json_office)}, 
-                        Point{GetInt("x", json_office), GetInt("y", json_office)},
-                        Offset{GetInt("offsetX", json_office), GetInt("offsetY", json_office)}
-                        });
-    }
-}
+	void ParseOffices(model::Map& map, json::object& parent_object)
+	{
+		for (auto office_entry : parent_object.at("offices").as_array())
+		{
+			json::object office_data = office_entry.as_object();
 
-void AddLootTypesFromJson(const json::object& json_map, Map& map){
-    if(auto it = json_map.find("lootTypes"); it != json_map.end()){
-        json::array loot_types = it->value().as_array();
-        for(const json::value& value : loot_types){
-            json::object loot_type = value.as_object();
+			using Id = util::Tagged<std::string, model::Office>;
+			Id id{ std::string(office_data.at("id").as_string()) };
 
-            LootType lt;
-            if(loot_type.contains("name")){
-                lt.name = loot_type.at("name").as_string();
-            }
-            if(loot_type.contains("file")){
-                lt.file = loot_type.at("file").as_string();
-            }
-            if(loot_type.contains("type")){
-                lt.type = loot_type.at("type").as_string();
-            }
-            if(loot_type.contains("rotation")){
-                lt.rotation = loot_type.at("rotation").as_int64();
-            }
-            if(loot_type.contains("color")){
-                lt.color = loot_type.at("color").as_string();
-            }
-            if(loot_type.contains("scale")){
-                lt.scale = loot_type.at("scale").as_double();
-            }
-            if(loot_type.contains("value")){
-                lt.value = loot_type.at("value").as_int64();
-            }
+			model::Office office(
+				{
+					id,
+					{static_cast<int>(office_data.at(X_COORDINATE).as_int64()), static_cast<int>(office_data.at(Y_COORDINATE).as_int64())},
+					{static_cast<int>(office_data.at(X_OFFSET).as_int64()), static_cast<int>(office_data.at(Y_OFFSET).as_int64())}
+				});
 
-            map.AddLootType(lt);
-        }
-    }
-}   
+			map.AddOffice(std::move(office));
+		}
+	}
 
-void AddMaps(const json::array& json_maps, Game& game){
-    for(const json::value& value : json_maps){
-        json::object json_map = value.as_object();  
+	model::Game LoadGame(const std::filesystem::path& json_path, model::Players& pm, db::ConnectionPool& connection_pool)
+	{
+		// Загрузить содержимое файла json_path, например, в виде строки
+		// Распарсить строку как JSON, используя boost::json::parse
+		// Загрузить модель игры из файла
+		model::Game game{pm, connection_pool };
 
-        Map map{Map::Id{GetString("id", json_map)}, GetString("name", json_map)};
-        double dog_speed = game.GetDefaultDogSpeed();
-        unsigned bag_cap = game.GetDefaultBagCapacity();
+		std::ifstream file(json_path);
 
-        try{
-            if(auto it = json_map.find("dogSpeed"); it != json_map.end()){
-                dog_speed = it->value().as_double();
-            }
+		if (!file.is_open())
+		{
+			json::object tmp{ {"error loading file", json_path.string()} };
+			json::object logger_data{ {"code", "fileLoadingError"}, {"exception", tmp} };
 
-            if(auto it = json_map.find("bagCapacity"); it != json_map.end()){
-                bag_cap = it->value().as_int64();
-            }
-        } catch(std::exception& ex){
-            std::cerr << ex.what() << std::endl;
-        }
-        map.AddDogSpeed(dog_speed);
-        map.AddBagCapacity(bag_cap);
-        AddRoadsFromJson(json_map, map);
-        AddBuildingsFromJson(json_map, map);
-        AddOfficesFromJson(json_map, map);
-        AddLootTypesFromJson(json_map, map);
-        game.AddMap(std::move(map));
-    }
-}
+			BOOST_LOG_TRIVIAL(info) << logging::add_value(timestamp, pt::microsec_clock::local_time()) << logging::add_value(additional_data, logger_data) << "error";
+			throw std::invalid_argument("Loading Error! Game data file couldn't be opened..");
+		}
 
-void LoadConfig(std::string json_str, Game& game){
-    try{
-        json::object attributes = json::parse(json_str).as_object();
+		std::ostringstream tmp;
 
-        if(auto it = attributes.find("defaultDogSpeed"); it != attributes.end()){
-            game.SetDefaultDogSpeed(it->value().as_double());
-        }
-        if(auto it = attributes.find("dogRetirementTime"); it != attributes.end()){
-            game.SetDogRetirementTime(static_cast<unsigned>(it->value().as_double()));
-        }
-        if(auto it = attributes.find("defaultBagCapacity"); it != attributes.end()){
-            game.SetDefaultBagCapacity(it->value().as_int64());
-        }
-        if(auto it = attributes.find("maps"); it != attributes.end()){
-            AddMaps(it->value().as_array(), game);
-        }
-        if(auto it = attributes.find("lootGeneratorConfig"); it != attributes.end()){
-            json::object loot_gen_config = it->value().as_object();
-            double period = loot_gen_config.at("period").as_double() * 1000;
-            double probability = loot_gen_config.at("probability").as_double();
+		tmp << file.rdbuf();
 
-            game.SetLootGenerator(period, probability);
-        }
-    } catch(std::exception& ex){
-        std::cerr << ex.what() << std::endl;
-    }
-}
+		std::string json_str = tmp.str();
 
-model::Game LoadGame(const std::filesystem::path& json_path) {
-    // Загрузить содержимое файла json_path, например, в виде строки
-    // Распарсить строку как JSON, используя boost::json::parse
-    // Загрузить модель игры из файла
-    Game game;
+		auto value = json::parse(json_str);
 
-    std::ifstream input_json(json_path);
-    std::ostringstream json_stream;
-    json_stream << input_json.rdbuf();
-    LoadConfig(json_stream.str(), game);
-    return game;
-}
+		if (value.as_object().contains("defaultDogSpeed"))
+		{
+			game.SetGlobalDogSpeed(value.as_object().at("defaultDogSpeed").as_double());
+		}
+
+		if (value.as_object().contains("defaultBagCapacity"))
+		{
+			game.SetGlobalCapacity(value.as_object().at("defaultBagCapacity").as_int64());
+		}
+
+		if (value.as_object().contains("dogRetirementTime"))
+		{
+			game.SetAFK(value.as_object().at("dogRetirementTime").as_double());
+		}
+
+		if (value.as_object().contains("lootGeneratorConfig"))
+		{
+			Data::MapExtras extras{ value.as_object().at("lootGeneratorConfig").as_object() };
+			game.SetExtraData(extras);
+		}
+
+		json::array maps = value.as_object().at("maps").as_array();
+
+		for (auto entry : maps)
+		{
+			//Unpacking JSON object that contains data for the current map
+			json::object map_data = entry.as_object();
+
+
+			using Id = util::Tagged<std::string, model::Map>;
+			Id id{ std::string(map_data.at("id").as_string()) };
+
+			//Initializing map
+			model::Map map(id, std::string(map_data.at("name").as_string()), game.GetPool()); //So many brackets omg
+
+			double dog_speed = -1;
+			int bag_capacity =-1;
+
+			if (map_data.contains("dogSpeed"))
+			{
+				dog_speed = map_data.at("dogSpeed").as_double();
+			}
+
+			if (map_data.contains("bagCapacity"))
+			{
+				bag_capacity = map_data.at("bagCapacity").as_int64();
+			}
+
+			if (map_data.contains("lootTypes"))
+			{
+				game.AddTable(*id, map_data.at("lootTypes").as_array());
+			}
+
+			//Reading JSON-object containing roads from map_data and adding them to the map
+			ParseRoads(map, map_data);
+
+			//Doing the same with buildings and offices
+			ParseBuildings(map, map_data);
+			ParseOffices(map, map_data);
+
+			//Adding the map to the game
+			game.AddMap(map, dog_speed, bag_capacity);
+
+		}
+
+		return game;
+	}
 
 }  // namespace json_loader
