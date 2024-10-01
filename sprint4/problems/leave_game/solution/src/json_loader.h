@@ -1,20 +1,29 @@
 #pragma once
-
-#include <filesystem>
-#include <string>
 #include <boost/json.hpp>
-#include "http_server.h"
+#include <filesystem>
 #include "model.h"
-#include "extra_data.h"
 
-namespace json_loader 
-{
-	namespace json = boost::json;
+namespace json_loader {
 
-	void ParseRoads(model::Map& map, json::object& parent_object);
-	void ParseBuildings(model::Map& map, json::object& parent_object);
-	void ParseOffices(model::Map& map, json::object& parent_object);
+namespace json = boost::json;
+using namespace model;
 
-	model::Game LoadGame(const std::filesystem::path& json_path, model::Players& pm, db::ConnectionPool& connection_pool);
+int GetInt(std::string key, const json::object& obj);
+
+std::string GetString(std::string key, const json::object& obj);
+
+void AddRoadsFromJson(const json::object& json_map, Map& map);
+
+void AddBuildingsFromJson(const json::object& json_map, Map& map);
+
+void AddOfficesFromJson(const json::object& json_map, Map& map);
+
+void AddLootTypesFromJson(const json::object& json_map, Map& map);
+
+void LoadConfig(std::string json_str, Game& game);
+
+void AddMaps(const json::array& json_maps, Game& game);
+
+model::Game LoadGame(const std::filesystem::path& json_path);
 
 }  // namespace json_loader

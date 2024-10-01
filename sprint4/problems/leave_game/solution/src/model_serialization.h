@@ -1,159 +1,193 @@
-#pragma once;
-
-#include <boost/serialization/vector.hpp>
+#pragma once
+#include <boost/archive/text_iarchive.hpp>
+#include <boost/archive/text_oarchive.hpp>
 #include <boost/serialization/deque.hpp>
+#include <boost/serialization/unordered_map.hpp>
 
-#include "model.h"
 
-namespace model
-{
-	template <typename Archive>
-	void serialize(Archive& ar, Point& point, [[maybe_unused]] const unsigned version)
-	{
-		ar& point.x;
-		ar& point.y;
-	}
+#include "player.h"
 
-	template <typename Archive>
-	void serialize(Archive& ar, Coordinates& pos, [[maybe_unused]] const unsigned version)
-	{
-		ar& pos.x;
-		ar& pos.y;
-	}
+namespace model {
 
-	template <typename Archive>
-	void serialize(Archive& ar, Velocity& vel, [[maybe_unused]] const unsigned version)
-	{
-		ar& vel.x;
-		ar& vel.y;
-	}
+template <typename Archive>
+void serialize(Archive& ar, model::PairDouble& point, [[maybe_unused]] const unsigned version) {
+    ar& point.x;
+    ar& point.y;
+}
 
-	template <typename Archive>
-	void serialize(Archive& ar, Item& item, [[maybe_unused]] const unsigned version)
-	{
-		ar& item.pos;
-		ar& item.width;
-		ar& item.id;
-		ar& item.type;
-		ar& item.value;
-	}
+template <typename Archive>
+void serialize(Archive& ar, Loot& obj, [[maybe_unused]] const unsigned version) {
+    ar&(obj.id);
+    ar&(obj.type);
+    ar&(obj.value);
+    ar&(obj.pos);
+}
+
+template <typename Archive>
+void serialize(Archive& ar, Map::Id& map_id, [[maybe_unused]] const unsigned version) {
+    ar&(*map_id);
+}
+
 }  // namespace model
 
-namespace serialization
-{
+namespace serialization {
 
-	// DogRepr (DogRepresentation) - сериализованное представление класса Dog
-	class DogRepr
-	{
-	public:
-		DogRepr() = default;
+using namespace model;
 
-		explicit DogRepr(const model::Dog& dog)
-			: position_(dog.GetPos()),
-			current_map_(dog.GetCurrentMap()),
-			current_map_id_(current_map_->GetId()),
-			current_road_(dog.GetCurrentRoad()),
-			road_start_(current_road_->GetStart()),
-			road_end_(current_road_->GetEnd()),
-			velocity_(dog.GetVel()),
-			direction_(dog.GetDir()),
-			speed_(current_map_->GetDogSpeed()){}
+class PlayerRepr{
+public:
+    PlayerRepr()
+    :id_(0), name_(), token_(""){}
 
-		[[nodiscard]] model::Dog Restore(model::Game& game) const
-		{
-			const model::Map* the_map = game.FindMap(current_map_id_);
+    PlayerRepr(const Player* player)
+    :id_(player->GetId()), name_(*(player->GetName())), token_(*(player->GetToken())){}
 
-			model::Road* the_road;
-			// :(
-			for (auto& road : the_map->GetRoadsAtPoint(road_start_))
-			{
-				model::Road* tmp = road.get();
+    int GetId() const{
+        return id_;
+    }
 
-				if (tmp->GetStart() == road_start_ && tmp->GetEnd() == road_end_)
-				{
-					the_road = tmp;
-					break;
-				}
-			}
+    std::string GetName() const{
+        return name_;
+    }
 
-			model::Dog dog{ position_, the_road, velocity_, speed_, direction_, the_map };
-			return dog;
-		}
+    std::string GetToken() const{
+        return token_;
+    }
 
-		template <typename Archive>
-		void serialize(Archive& ar, [[maybe_unused]] const unsigned version)
-		{
-			ar& *current_map_id_;
-			ar& position_;
-			ar& road_start_;
-			ar& road_end_;
-			ar& velocity_;
-			ar& speed_;
-			ar& direction_;
-		}
+    template <typename Archive>
+    void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+        ar& id_;
+        ar& name_;
+        ar& token_;
+    }
+private:
+    int id_;
+    std::string name_;
+    std::string token_;
+};
 
-	private:
-		model::Coordinates position_ = {-1, -1};
+// DogRepr (DogRepresentation) - сериализованное представление класса Dog
+class DogRepr {
+public:
+    DogRepr() = default;
 
-		const model::Map* current_map_ = nullptr;
-		model::Map::Id current_map_id_ = model::Map::Id("id");
+    explicit DogRepr(const Dog& dog)
+        : id_(dog.GetId())
+        , name_(*(dog.GetName()))
+        , pos_(*(dog.GetPosition()))
+        , speed_(*(dog.GetSpeed()))
+        , direction_(dog.GetDirection())
+        , score_(dog.GetScore())
+        , bag_(*(dog.GetBag()))
+        , player_repr_(){
+    }
 
-		model::Road* current_road_ = nullptr;
-		model::Point road_start_ = { -1, -1 };
-		model::Point road_end_ = { -1, -1 };
+    void AddPlayerRepr(PlayerRepr pr){
+        player_repr_ = std::move(pr);
+    }
+    
+    const PlayerRepr& GetPlayerRepr() const{
+        return player_repr_;
+    }
 
-		model::Velocity velocity_ = { -1, -1 };;
-		model::Direction direction_ = model::Direction::NORTH;
-		double speed_ = -1;
-	};
+    [[nodiscard]] Dog Restore() const {
+        Dog dog(id_, Dog::Name(name_), Dog::Position(pos_), Dog::Speed(speed_), direction_);
+        return dog;
+    }
 
-	class PlayerRepr
-	{
-	public:
-		PlayerRepr() = default;
+    template <typename Archive>
+    void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+        ar& id_;
+        ar& name_;
+        ar& pos_;
+        ar& speed_;
+        ar& direction_;
+        ar& score_;
+        ar& bag_;
+        ar& player_repr_;
+    }
 
-		explicit PlayerRepr(const model::Player& player)
-			:pet_(player.GetDog()),
-			id_(player.GetId()),
-			username_(player.GetName()),
-			current_map_(pet_->GetCurrentMap()),
-			current_map_id_(current_map_->GetId()),
-			bag_(player.PeekInTheBag()),
-			score(player.GetScore()){}
+private:
+    int id_ = 0u;
+    std::string name_;
+    PairDouble pos_;
+    PairDouble speed_;
+    Direction direction_ = Direction::NORTH;
+    unsigned score_ = 0;
+    std::deque<Loot> bag_;
+    PlayerRepr player_repr_;
+};
 
-		[[nodiscard]] model::Player Restore(model::Game& game, model::Dog* lost_pup, model::Players& pm) const
-		{
-			const model::Map* the_map = game.FindMap(current_map_id_);
+class SessionRepr{
+public:
 
-			return { lost_pup, id_, username_, the_map, score, bag_, pm };
-		}
+    SessionRepr() = default;
 
-		template <typename Archive>
-		void serialize(Archive& ar, [[maybe_unused]] const unsigned version)
-		{
-			ar& *current_map_id_;
+    void AddLoots(const std::deque<Loot>& loot){
+        loot_ = loot;
+    }
 
-			ar& id_;
-			ar& username_;
+    const std::deque<Loot>& GetLoot() const{
+        return loot_;
+    }
 
-			ar& score;
-			ar& bag_;
-		}
+    void AddDogsRepr(std::deque<DogRepr> dogs_repr){
+        dogs_repr_ = std::move(dogs_repr);
+    }
 
-	private:
+    const std::deque<DogRepr>& GetDogsRepr() const{
+        return dogs_repr_;
+    }
 
-		model::Dog* pet_ = nullptr;		
+    template <typename Archive>
+    void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+        ar& loot_;
+        ar& dogs_repr_;
+    }
+private:
+    std::deque<Loot> loot_;
+    std::deque<DogRepr> dogs_repr_;
+};
 
-		size_t id_ = -1;
-		std::string username_ = "";
+class GameStateRepr{
+public:
+    using SessionsByMapId = std::unordered_map<std::string, std::deque<SessionRepr>>;
+    GameStateRepr() = default;
 
-		const model::Map* current_map_ = nullptr;
-		model::Map::Id current_map_id_{model::Map::Id("id")};
+    GameStateRepr(const Game::SessionsByMapId& sessions_by_map, const Players& players){
+        for(const auto& [map_id, sessions] : sessions_by_map){
+            std::deque<Loot> loot;
+            std::deque<DogRepr> dogs_repr;
+            for(const auto& session : sessions){
+                loot = session.GetLootObjects();
+                for(const auto& dog : session.GetDogs()){
+                    dogs_repr.emplace_back(DogRepr(dog));
 
-		std::deque<model::Item> bag_ = {};
+                    const Player* player = players.FindByDogIdAndMapId(dog.GetId(), *map_id);
+                    PlayerRepr player_repr(player);
+                    dogs_repr.back().AddPlayerRepr(player_repr);
+                }
+            }
 
-		int64_t score = -1;
+            SessionRepr session_repr;
+            session_repr.AddLoots(loot);
+            session_repr.AddDogsRepr(dogs_repr);
 
-	};
+            all_sessions_[*map_id].emplace_back(std::move(session_repr));
+        }
+    }
+
+    const SessionsByMapId& GetAllSessions() const{
+        return all_sessions_;
+    }
+    
+    template <typename Archive>
+    void serialize(Archive& ar, [[maybe_unused]] const unsigned version) {
+        ar& all_sessions_;
+    }
+    
+private:
+    SessionsByMapId all_sessions_;
+};
 
 }  // namespace serialization

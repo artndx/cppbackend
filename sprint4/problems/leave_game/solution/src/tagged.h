@@ -1,8 +1,7 @@
 #pragma once
 #include <compare>
 
-namespace util 
-{
+namespace util {
 
 /**
  * Вспомогательный шаблонный класс "Маркированный тип".
@@ -39,12 +38,21 @@ public:
         : value_(v) {
     }
 
+    // Tagged(const Tagged& other)
+    //     : value_(other.value_){
+    // }
+
     const Value& operator*() const {
         return value_;
     }
 
     Value& operator*() {
         return value_;
+    }
+
+    Tagged& operator=(const Tagged& other){
+        value_ = other.value_;
+        return *this;
     }
 
     // Так в C++20 можно объявить оператор сравнения Tagged-типов

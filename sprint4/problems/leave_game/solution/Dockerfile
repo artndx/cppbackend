@@ -10,11 +10,13 @@ RUN apt update && \
 
 # Запуск conan как раньше
 COPY conanfile.txt /app/
+COPY default.txt /root/.conan/profiles/
 RUN mkdir /app/build && cd /app/build && \
-    conan install .. --build=missing -s build_type=Release -s compiler.libcxx=libstdc++11
+    conan install .. -s compiler.libcxx=libstdc++11 --build=missing -s build_type=Release
 
 # Папка data больше не нужна
 COPY ./src /app/src
+COPY ./tests /app/tests
 COPY CMakeLists.txt /app/
 
 RUN cd /app/build && \
@@ -26,13 +28,14 @@ FROM ubuntu:22.04 as run
 
 # Создадим пользователя www
 RUN groupadd -r www && useradd -r -g www www
-
 USER www
+
 # Скопируем приложение со сборочного контейнера в директорию /app.
 # Не забываем также папку data, она пригодится.
-COPY --from=build /app/build/bin/game_server /app/
+COPY --from=build /app/build/game_server /app/
 COPY ./data /app/data
 COPY ./static /app/static
-
+ 
 # Запускаем игровой сервер
-ENTRYPOINT ["/app/game_server", "--config-file", "/app/data/config.json", "--www-root", "/app/static"]
+
+ENTRYPOINT ["/app/game_server", "--config-file", "/app/data/config.json", "--www-root", "/app/static"] 

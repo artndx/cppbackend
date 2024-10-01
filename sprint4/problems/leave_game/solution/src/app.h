@@ -14,7 +14,7 @@
 #include <fstream>
 #include "player.h"
 #include "model_serialization.h"
-#include "constants.h"
+#include "global.h"
 
 namespace app{
 

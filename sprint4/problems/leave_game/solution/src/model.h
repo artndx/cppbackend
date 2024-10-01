@@ -1,349 +1,432 @@
 #pragma once
+#include <algorithm>
+#include <string>
+#include <unordered_map>
+#include <set>
+#include <map>
+#include <vector>
+#include <deque>
+#include <iostream>
+#include <optional>
+#include <boost/signals2.hpp>
+
+#include "geom.h"
+#include "tagged.h"
+#include "loot_generator.h"
+#include "collision_detector.h"
+
+namespace model {
+
+namespace sig = boost::signals2;
+    
+namespace detail{
+
+using Milliseconds = std::chrono::milliseconds;
+
+inline Milliseconds FromDouble(double delta){
+    return std::chrono::duration_cast<Milliseconds>(std::chrono::duration<double>(delta/1000));
+}   
+
+inline Milliseconds FromInt(unsigned delta){
+    return std::chrono::duration_cast<Milliseconds>(std::chrono::duration<unsigned>(delta/1000));
+}   
+
+} // namespace detail
+
+inline bool operator<(const PairDouble& lhs, const PairDouble& rhs){
+    return std::tuple(lhs.x, lhs.y) < std::tuple(rhs.x, rhs.x);
+}
+
+struct Loot{
+    unsigned id;
+    unsigned type;
+    unsigned value;
+    PairDouble pos;
+};
+
+class Road {
+    struct HorizontalTag {
+        explicit HorizontalTag() = default;
+    };
+
+    struct VerticalTag {
+        explicit VerticalTag() = default;
+    };
+
+public:
+    constexpr static HorizontalTag HORIZONTAL{};
+    constexpr static VerticalTag VERTICAL{};
+
+    Road(HorizontalTag, Point start, Coord end_x) noexcept
+        : start_{start}
+        , end_{end_x, start.y} {
+    }
+
+    Road(VerticalTag, Point start, Coord end_y) noexcept
+        : start_{start}
+        , end_{start.x, end_y} {
+    }
+
+    bool IsHorizontal() const noexcept {
+        return start_.y == end_.y;
+    }
+
+    bool IsVertical() const noexcept {
+        return start_.x == end_.x;
+    }
+
+    Point GetStart() const noexcept {
+        return start_;
+    }
+
+    Point GetEnd() const noexcept {
+        return end_;
+    }
+
+    bool IsInvert() const noexcept{
+        if(start_.x > end_.x || start_.y > end_.y){
+            return true;
+        }
+        return false;
+    }
+
+private:
+    Point start_;
+    Point end_;
+};
+
+inline std::ostream& operator<<(std::ostream& out, const Road& road){
+    out << road.GetStart().x << ", " << road.GetStart().y
+    << " -- " << road.GetEnd().x << ", " << road.GetEnd().y;
+    return out;
+}
+
+class Building {
+public:
+    explicit Building(Rectangle bounds) noexcept
+        : bounds_{bounds} {
+    }
+
+    const Rectangle& GetBounds() const noexcept {
+        return bounds_;
+    }
+
+private:
+    Rectangle bounds_;
+};
+
+class Office {
+public:
+    using Id = util::Tagged<std::string, Office>;
+
+    Office(Id id, Point position, Offset offset) noexcept
+        : id_{std::move(id)}
+        , position_{position}
+        , offset_{offset} {
+    }
+
+    const Id& GetId() const noexcept {
+        return id_;
+    }
+
+    Point GetPosition() const noexcept {
+        return position_;
+    }
+
+    Offset GetOffset() const noexcept {
+        return offset_;
+    }
+
+private:
+    Id id_;
+    Point position_;
+    Offset offset_;
+};
+
+struct LootType{
+    std::optional<std::string> name;
+    std::optional<std::string> file;
+    std::optional<std::string> type;
+    std::optional<unsigned> rotation;
+    std::optional<std::string> color;
+    std::optional<double> scale;
+    std::optional<unsigned> value;
+};
+
+class Dog{
+public:
+    using Name = util::Tagged<std::string, Dog>;
+    using Position = util::Tagged<PairDouble, Dog>;
+    using Speed = util::Tagged<PairDouble, Dog>;
+    using SpeedSignal = sig::signal<void(Speed new_speed)>;
+    using Bag = util::Tagged<std::deque<Loot>, Dog>;
+
+    Dog(int id, Name name, Position pos, Speed speed, Direction dir) noexcept
+        : id_(id), name_(name)
+        , pos_(pos), speed_(speed), dir_(dir)
+        , bag_({}){
+    }
+
+    int GetId() const{
+        return id_;
+    }
+
+    const Name& GetName() const{
+        return name_;
+    }
+
+    void SetPosition(const Position& new_pos){
+        pos_ = new_pos;
+    }
+
+    const Position& GetPosition() const{
+        return pos_;
+    }
+
+    void SetSlotSpeed(const SpeedSignal::slot_type& slot) const{
+        speed_signal_.connect(slot);
+    }
+
+    void SetSpeed(const Speed& new_speed){
+        speed_signal_(new_speed);
+        speed_ = new_speed;
+    }
+
+    const Speed& GetSpeed() const{
+        return speed_;
+    }
+
+    void SetDirection(model::Direction dir){
+        dir_ = dir;
+    }
+
+    Direction GetDirection() const{
+        return dir_;
+    }
+
+    void CollectItem(Loot loot){
+        (*bag_).emplace_back(std::move(loot));
+    }
+
+    [[nodiscard]] bool PutToBag(Loot item) {
+        if (!(*bag_).empty()) {
+            return false;
+        }
+
+        (*bag_).push_back(item);
+        return true;
+    }
+
+    void ClearBag(){
+        for(const Loot& loot : (*bag_)){
+            score_ += loot.value;
+        }
+        (*bag_).resize(0);
+    }
+
+    void SetBagCapacity(unsigned new_bag_capacity){
+        bag_capacity_ = new_bag_capacity;
+    }
+
+    unsigned GetBagCapacity() const{
+        return bag_capacity_;
+    }
+
+    const Bag& GetBag() const{
+        return bag_;
+    }
+    
+    void SetScore(unsigned new_score){
+        score_ = new_score;
+    }
+
+    unsigned GetScore() const{
+        return score_;
+    }   
+private:
+    int id_;
+    Name name_;
+    Position pos_;
+    Speed speed_;
+    mutable SpeedSignal speed_signal_;
+    Direction dir_;
+    Bag bag_;
+    unsigned bag_capacity_ = 0;
+    unsigned score_ = 0;
+};
+
+class Map {
+public:
+    using Id = util::Tagged<std::string, Map>;
+    enum class RoadTag{
+        VERTICAL,
+        HORIZONTAl
+    };
+    using Roads = std::deque<Road>;
+    using RoadMap = std::map<RoadTag, std::map<double, const Road&>>;
+    using RoadIt = std::map<double, const Road&>::iterator;
+    using ConstRoadIt = std::map<double, const Road&>::const_iterator;
+    using Buildings = std::deque<Building>;
+    using Offices = std::deque<Office>;
+    using LootTypes = std::deque<LootType>;
+
+    Map(Id id, std::string name) noexcept
+        : id_(std::move(id))
+        , name_(std::move(name)) {
+    }
+
+    const Id& GetId() const noexcept;
+
+    const std::string& GetName() const noexcept;
+
+    const Buildings& GetBuildings() const noexcept;
+
+    const Roads& GetRoads() const noexcept;
+
+    const Offices& GetOffices() const noexcept;
+    
+    const LootTypes& GetLootTypes() const noexcept;
+
+    unsigned GetRandomLootType() const;
+
+    void AddRoad(const Road& road);
 
-#include "model_core.h"
-
-namespace model
-{
-	class Dog
-	{
-	public:
-
-		Dog(Coordinates coords, const Map* map);
-		Dog(Coordinates coords, Road* current_road, Velocity vel, double speed, Direction dir, const Map* map);
-
-		void SetVel(double vel_x, double vel_y)
-		{
-			velocity_.x = speed_ * vel_x;
-			velocity_.y = speed_ * vel_y;
-		}
-
-		void SetDir(Direction dir)
-		{
-			direction_ = dir;
-		}
-
-		Coordinates GetPos() const
-		{
-			return position_;
-		}
-
-		Velocity GetVel() const
-		{
-			return velocity_;
-		}
-
-		Direction GetDir() const
-		{
-			return direction_;
-		}
-
-		const Map* GetCurrentMap() const
-		{
-			return current_map_;
-		}
-
-		Road* GetCurrentRoad() const
-		{
-			return current_road_;
-		}
-
-		const std::deque<std::shared_ptr<Road>>& GetRoadsByPos(Coordinates pos) const
-		{
-			int pos_x = static_cast<int>(pos.x + 0.5);
-			int pos_y = static_cast<int>(pos.y + 0.5);
+    std::vector<const Road*> FindRoadsByCoords(const Dog::Position& pos) const;
 
-			return current_map_->GetRoadsAtPoint({ pos_x, pos_y });
-		}
+    void AddBuilding(const Building& building);
 
-		void MoveVertical(double distance, int iteration); 
-		
-		void MoveHorizontal(double distance, int iteration);
-
-		void Move(double ms);
-
-	private:
-
-		Coordinates position_;
-		Road* current_road_;
-
-		Velocity velocity_{ 0, 0 };
-		double speed_;
-
-		Direction direction_ = Direction::NORTH;
-
-		const Map* current_map_;
-	};
-
-	class Players;
+    void AddOffice(Office office);
 
-	class Player
-	{
-	public:
-		Player(Dog* dog, size_t id, std::string username, const Map* maptr, Players& pm)
-			:username_(username),
-			current_map_(maptr),
-			id_(id),
-			pet_(dog),
-			player_manager_(pm){}
+    void AddLootType(LootType loot_type);
 
-		Player(Dog* dog, size_t id, std::string username, const Map* maptr, int64_t score, std::deque<Item> items, Players& pm)
-			:username_(username),
-			current_map_(maptr),
-			bag_(items),
-			id_(id),
-			score_(score),
-			pet_(dog),
-			player_manager_(pm){}
+    void AddDogSpeed(double new_speed);
 
-		std::string GetName() const
-		{
-			return username_;
-		}
+    double GetDogSpeed() const;
 
-		const Map* GetCurrentMap() const
-		{
-			return current_map_;
-		}
+    void AddBagCapacity(unsigned new_cap);
 
-		size_t GetId() const
-		{
-			return id_;
-		}
+    unsigned GetBagCapacity() const;
 
-		Coordinates GetPos() const
-		{
-			if (pet_ == nullptr)
-				return { -1, -1 };
+    static PairDouble GetFirstPos(const model::Map::Roads& roads);
 
-			return pet_->GetPos();
-		}
+    static PairDouble GetRandomPos(const model::Map::Roads& roads);
+private:
+    static unsigned GetRandomNumber(unsigned a, unsigned b){
+        return a + rand()%(b-a);
+    }
 
-		Velocity GetVel() const
-		{
-			if (pet_ == nullptr)
-				return { -1, -1 };
+    using OfficeIdToIndex = std::unordered_map<Office::Id, size_t, util::TaggedHasher<Office::Id>>;
 
-			return pet_->GetVel();
-		}
+    /* Поиск вертикальных дорог по x координате*/
+    void FindInVerticals(const Dog::Position& pos, std::vector<const Road*>& roads) const;
 
-		Direction GetDir() const
-		{
-			if (pet_ == nullptr)
-				return Direction::NORTH;
+    /* Поиск горизонтальных дорог по y координате*/
+    void FindInHorizontals(const Dog::Position& pos, std::vector<const Road*>& roads) const;
 
-			return pet_->GetDir();
-		}
+    bool CheckBounds(ConstRoadIt it, const Dog::Position& pos) const;
 
-		void SetVel(double vel_x, double vel_y);
+    Id id_;
+    std::string name_;
+    Roads roads_;
+    RoadMap road_map_;
+    Buildings buildings_;
+    LootTypes loot_types_;
 
-		void SetDir(Direction dir)
-		{
-			pet_->SetDir(dir);
-		}
+    OfficeIdToIndex warehouse_id_to_index_;
+    Offices offices_;
+    double dog_speed_ = 0;
+    unsigned bag_capacity_;
+};
 
-		void Move(int ms);
+class GameSession{
+public:
+    explicit GameSession(const Map* map)
+        : map_(map){
+    }
 
-		void Retire(int64_t current_age);
+    Dog* AddDog(int id, const Dog::Name& name, const Dog::Position& pos, const Dog::Speed& vel, Direction dir);
 
-		void StoreItem(const Item& item);
+    Dog* AddCreatedDog(Dog new_dog);
 
-		void Depot();
+    const Map* GetMap() const;
 
-		const std::deque<Item> PeekInTheBag() const
-		{
-			return bag_;
-		}
+    std::deque<Dog>& GetDogs();
 
-		int GetItemCount() const
-		{
-			return bag_.size();
-		}		
+    const std::deque<Dog>& GetDogs() const;
 
-		int64_t GetScore() const
-		{
-			return score_;
-		}
+    void UpdateLoot(unsigned loot_count);
 
-		Dog* GetDog() const
-		{
-			return pet_;
-		}
+    void SetLootObjects(std::deque<Loot> new_loot);
 
-	private:
+    const std::deque<Loot>& GetLootObjects() const;
 
-		std::string username_;
-		const Map* current_map_;
+    void DeleteCollectedLoot(std::set<size_t> collected_items);
 
-		std::deque<Item> bag_;
-		const size_t id_;
+    void DeleteDog(const Dog* erasing_dog);
+private:
+    unsigned auto_loot_counter_ = 0;
+    std::deque<Loot> loot_;
+    std::deque<Dog> dogs_;
+    const Map* map_;
+};
 
-		int64_t score_ = 0;
+class Game {
+public:
+    using MapIdHasher = util::TaggedHasher<Map::Id>;
+    using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
+    using SessionsByMapId = std::unordered_map<Map::Id, std::deque<GameSession>, MapIdHasher>;
+    using Maps = std::deque<Map>;
 
-		Dog* pet_;
+    void AddMap(Map&& map);
 
-		int idle_time = 0;
-		int64_t age_ms_ = 0;
+    GameSession* AddSession(const Map::Id& map_id);
 
-		Players& player_manager_;
-		bool is_removed = false;
-	};
+    GameSession* SessionIsExists(const Map::Id& map_id);
 
-	class Players
-	{
-	public:
-		explicit Players(bool randomize)
-			:randomize_(randomize) {}
+    const SessionsByMapId& GetAllSessions() const;
 
-		//This function creates a player and returns a token
-		std::string MakePlayer(std::string username, const Map* map);
+    void SetLootGenerator(double period, double probability);
 
-		Player* FindPlayerByIdx(size_t idx);
-		Player* FindPlayerByToken(std::string token) const;
+    void SetDefaultDogSpeed(double new_speed);
 
-		Dog* BirthDog(const Map* map);
-		Dog* FindDogByIdx(size_t idx);
+    double GetDefaultDogSpeed() const;
 
-		const std::deque<Player*> GetPlayerList(std::string map_id) const
-		{
-			return map_id_to_players_.at(map_id);
-		}
+    void SetDefaultBagCapacity(unsigned new_cap);
 
-		const int GetPlayerCount(std::string map_id) const;
+    unsigned GetDefaultBagCapacity() const;
 
-		void MoveAllByMap(double ms, std::string& id);
+    void SetDogRetirementTime(unsigned dog_retirement_time);
+    
+    unsigned GetDogRetirementTime() const;
+    
+    const Maps& GetMaps() const noexcept;
 
-		std::deque<Coordinates> GetLooterPositionsByMap(const std::string& id) const;
+    const Map* FindMap(const Map::Id& id) const noexcept;
 
-		Dog* InsertDog(const Dog& dog);
+    detail::Milliseconds GetLootGeneratePeriod() const;
 
-		void InsertPlayer(Player& pl, const std::string& token, const std::string& map_id);
+    void GenerateLootInSessions(detail::Milliseconds delta);
 
-		const std::unordered_map<std::string, Player*>& GetTokenToPlayerTable() const
-		{
-			return token_to_player_;
-		}
+    void UpdateGameState(unsigned delta);
 
-		void RemovePlayer(Player* pl);
+    void DisconnectDogFromSession(const GameSession* player_session, const Dog* erasing_dog);
+private:
+    void UpdateAllDogsPositions(std::deque<Dog>& dogs, const Map* map, double delta);
 
-	private:
+    void UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double delta);
 
-		bool randomize_;
+    void UpdateDogsLoot(GameSession& session, double delta);
 
-		std::unordered_map<std::string, Player*> token_to_player_;
-		std::unordered_map<std::string, std::deque<Player*>> map_id_to_players_;
-		std::deque<Player> players_;
-		std::deque<Dog> dogs_;
+    static bool IsInsideRoad(const PairDouble& getting_pos, const Point& start, const Point& end);
 
-	};
-
-	class Game
-	{
-	public:
-
-		Game(Players& pm, db::ConnectionPool& pool)
-			:player_manager_(pm),
-			connection_pool_(pool){}
-
-		using Maps = std::vector<Map>;
-
-		void AddMap(Map map, double dog_speed = -1, int bag_capacity = -1);
-
-		const Maps& GetMaps() const noexcept {
-			return maps_;
-		}
-
-		const Map* FindMap(const Map::Id& id) const noexcept;
-
-		std::string SpawnPlayer(std::string username, const Map* map)
-		{
-			return player_manager_.MakePlayer(username, map);
-		}
-
-		Player* FindPlayerByToken(std::string token) const
-		{
-			return player_manager_.FindPlayerByToken(token);
-		}
-
-		const std::deque<Player*> GetPlayerList(std::string map_id) const
-		{
-			return player_manager_.GetPlayerList(map_id);
-		}
-
-		const int GetPlayerCount(std::string map_id) const
-		{
-			return player_manager_.GetPlayerCount(map_id);
-		}
-
-		void SetGlobalDogSpeed(double speed)
-		{
-			global_dog_speed_ = speed;
-		}
-
-		void SetGlobalCapacity(int capacity)
-		{
-			global_bag_capacity = capacity;
-		}
-
-		void SetAFK(double threshold)
-		{
-			afk_threshold = threshold * 1000;
-		}
-
-		void MoveAndCalcPickups(Map& map, int ms);
-
-		void ServerTick(int milliseconds);
-
-		void SetExtraData(Data::MapExtras extras)
-		{
-			extra_data_ = extras;
-		}
-
-		boost::json::object GetLootConfig() const
-		{
-			return extra_data_.GetConfig();
-		}
-
-		boost::json::array GetLootTable(const std::string& id) const
-		{
-			return extra_data_.GetTable(id);
-		}
-
-		Players& GetPlayerManager()
-		{
-			return player_manager_;
-		}
-
-		void AddTable(const std::string& id, boost::json::array& table)
-		{
-			extra_data_.AddTable(id, table);
-		}
-
-		db::ConnectionPool& GetPool()
-		{
-			return connection_pool_;
-		}
-
-		void SetLootOnMap(const std::deque<Item>& items, const std::string& map_id);
-
-	private:
-
-		double global_dog_speed_ = 1;
-		int global_bag_capacity = 3;
-		double afk_threshold = 60000.0;
-
-		using MapIdHasher = util::TaggedHasher<Map::Id>;
-		using MapIdToIndex = std::unordered_map<Map::Id, size_t, MapIdHasher>;
-
-		db::ConnectionPool& connection_pool_;
-
-		std::vector<Map> maps_;
-		MapIdToIndex map_id_to_index_;
-
-		Players& player_manager_;
-		Data::MapExtras extra_data_;
-
-		int save_period_ = -1;
-		std::string save_file_ = "";
-	};
+    Maps maps_;
+    SessionsByMapId map_id_to_sessions_;
+    MapIdToIndex map_id_to_index_;
+    std::optional<loot_gen::LootGenerator> loot_generator_;
+    double default_dog_speed_ = 1.0;
+    double default_bag_capacity_ = 3;
+    static constexpr double road_offset_ = 0.4;
+    unsigned dog_retirement_time_ = 60;
+};
 
 }  // namespace model

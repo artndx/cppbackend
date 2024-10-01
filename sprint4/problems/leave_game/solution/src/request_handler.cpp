@@ -1,177 +1,137 @@
-﻿#include "request_handler.h"
+#include "request_handler.h"
+#include <algorithm>
 
-bool IsValidToken(std::string token)
-{
-	if (token.size() != 32)
-	{
-		return false;
-	}
+namespace request_handler {
 
-	return true;
+namespace detail{
+
+std::string ToLower(std::string_view str){
+    std::string result;
+    result.resize(str.size());
+    std::transform(str.begin(), str.end(), result.begin(), [](char c){
+        return std::tolower(c);
+    });
+
+    return result;
 }
 
-namespace http_handler 
-{
-	StringResponse MakeStringResponse(http::status status, std::string_view body, 
-		unsigned http_version, bool keep_alive, std::string_view content_type)
-	{
-		StringResponse response(status, http_version);
-		response.set(http::field::content_type, content_type);
-		response.set(http::field::cache_control, "no-cache");
-		response.body() = body;
-		response.content_length(body.size());
-		response.keep_alive(keep_alive);
-		return response;
-	}
+char FromHexToChar(char a, char b){
+    a = std::tolower(a);
+    b = std::tolower(b);
 
-	FileResponse MakeResponse(http::status status, http::file_body::value_type& body, 
-		unsigned http_version, bool keep_alive, std::string_view content_type)
-	{
-		FileResponse response;
-		response.version(http_version);
-		response.result(status);
-		response.set(http::field::content_type, content_type);
-		response.body() = std::move(body);
-		response.prepare_payload();
-		response.keep_alive(keep_alive);
-		return response;
-	}
+    if('a' <= a && a <= 'z'){
+        a = a - 'a' + 10;
+    } else {
+        a -= '0';
+    }
 
-	void PackMaps(json::array& target_container, model::Game& game)
-	{
-		for (auto& map : game.GetMaps())
-		{
-			json::object elem;
+    if('a' <= b && b <= 'z'){
+        b = b - 'a' + 10;
+    } else {
+        b -= '0';
+    }
 
-			elem.emplace("id", *map.GetId());
-			elem.emplace("name", map.GetName());
+    return a * 16 + b;
+}
 
-			target_container.push_back(std::move(elem));
-		}
-	}
+std::string DecodeTarget(std::string_view req_target){
+    std::string result;
+    for(size_t i = 0; i < req_target.size(); ++i){
+        if(req_target[i] == '%'){
+            if(i + 2 >= req_target.size()){
+                return "";
+            }
+            result.push_back(FromHexToChar(req_target[i + 1], req_target[i + 2]));
+            i += 2;
+        } else if(req_target[i] == '+'){
+            result.push_back(' ');
+        } else {
+            result.push_back(req_target[i]);
+        }
+    }  
+    return result;
+}
 
+std::pair<std::string, std::string> ParseArg(std::string_view arg){
+    size_t equal_sign = arg.find('=');
+    std::string key = std::string(arg.substr(0, equal_sign));
+    std::string value = std::string(arg.substr(equal_sign+1, arg.npos));
 
-	void PackRoads(json::array& target_container, const model::Map* map_ptr)
-	{
-		for (const model::Road& road_data : map_ptr->GetRoads())
-		{
-			//Temporary road object
-			json::object road;
+    return std::make_pair(std::move(key), std::move(value));
+}
 
-			model::Point start = road_data.GetStart();
-			model::Point end = road_data.GetEnd();
+std::unordered_map<std::string, std::string> ParseTargetArgs(std::string_view req_target){
+    std::unordered_map<std::string, std::string> args;
+    
+    size_t prev = req_target.find('?') + 1;;
+    size_t next_amper = req_target.find('&');
+    while(next_amper != req_target.npos){
+        std::string arg;
+        size_t length = next_amper - prev;
+        arg = req_target.substr(prev, length);
 
-			road.emplace(X0_COORDINATE, start.x);
-			road.emplace(Y0_COORDINATE, start.y);
+        auto parsed_arg = ParseArg(arg);
+        args.emplace(std::move(parsed_arg.first), std::move(parsed_arg.second));
 
-			if (road_data.IsHorizontal())
-			{
-				road.emplace(X1_COORDINATE, end.x);
-			}
-			else
-			{
-				road.emplace(Y1_COORDINATE, end.y);
-			}
+        prev = next_amper + 1;
+        next_amper = req_target.find('&', prev);
+    }
 
-			//Pushing road to the road container
-			target_container.push_back(std::move(road));
-		}
-	}
+    size_t length = next_amper - prev;
+    std::string last_arg = std::string(req_target.substr(prev, length));
+    auto parsed_arg = ParseArg(last_arg);
+    args.emplace(std::move(parsed_arg.first), std::move(parsed_arg.second));
 
-	void PackBuildings(json::array& target_container, const model::Map* map_ptr)
-	{
-		for (const model::Building& building_data : map_ptr->GetBuildings())
-		{
-			//Temporary building object
-			json::object building;
+    return args;
+}
 
-			model::Rectangle dimensions = building_data.GetBounds();
+std::string MakeErrorCode(std::string_view code, std::string_view message){
+    json::object body;
+    body["code"] = std::string(code);
+    body["message"] = std::string(message);
+    return json::serialize(body);
+}
 
-			building.emplace(X_COORDINATE, dimensions.position.x);
-			building.emplace(Y_COORDINATE, dimensions.position.y);
-			building.emplace(WIDTH, dimensions.size.width);
-			building.emplace(HEIGHT, dimensions.size.height);
+bool IsMatched(const std::string& str, std::string reg_expression){
+    return boost::regex_match(str, boost::regex(reg_expression));
+}
 
-			//Pushing building to the building container
-			target_container.push_back(std::move(building));
-		}
-	}
+} // namespace detail
 
-	void PackOffices(json::array& target_container, const model::Map* map_ptr)
-	{
-		for (const model::Office& office_data : map_ptr->GetOffices())
-		{
-			//Temporary office object
-			json::object office;
+/* ------------------------ BaseHandler ----------------------------------- */
 
-			office.emplace("id", *office_data.GetId());
+StringResponse BaseHandler::MakeResponse(http::status status, std::string_view body,
+                                    unsigned http_version, size_t content_length, 
+                                    std::string content_type){
+    StringResponse response(status, http_version);
 
-			model::Point pos = office_data.GetPosition();
-			office.emplace(X_COORDINATE, pos.x);
-			office.emplace(Y_COORDINATE, pos.y);
+    response.set(http::field::content_type, content_type);
+    response.set(http::field::cache_control, "no-cache"s);
+    response.body() = body;
+    response.content_length(content_length);
+    return response;
+}
 
-			model::Offset offset = office_data.GetOffset();
-			office.emplace(X_OFFSET, offset.dx);
-			office.emplace(Y_OFFSET, offset.dy);
+StringResponse BaseHandler::MakeErrorResponse(http::status status, std::string_view code, 
+                                        std::string_view message, unsigned int version){
+    using namespace std::literals;
 
-			//Pushing office to the building container
-			target_container.push_back(std::move(office));
-		}
-	}
+    std::string body = detail::MakeErrorCode(code, message);
+    return MakeResponse(status, body, version, body.size(), "application/json"s);
+}
 
-	bool IsSubPath(fs::path path, fs::path base)
-	{
-		path = fs::weakly_canonical(path);
-		base = fs::weakly_canonical(base);
+/* -------------------------- FileHandler --------------------------------- */
 
-		for (auto b = base.begin(), p = path.begin(); b != base.end(); ++b, ++p)
-		{
-			if (p == path.end() || *p != *b)
-			{
-				return false;
-			}
-		}
+std::string FileHandler::GetRequiredContentType(std::string_view req_target){
+    auto point = req_target.find_last_of('.');
+    std::string extension;
+    if(point != req_target.npos){
+        extension = detail::ToLower(req_target.substr(point, req_target.npos));
+    }        
+    if(detail::FILES_EXTENSIONS.count(extension)){
+        return detail::FILES_EXTENSIONS.at(extension);
+    }
+    return "application/octet-stream";
+}
 
-		return true;
-	}
-
-	//Dictionary with different extensions. Idk where else to put it
-	std::map<std::string_view, std::string_view> EXTENSION_TO_VALUE =
-	{
-		{".json"sv, ContentType::APPLICATION_JSON},
-		{".xml"sv, ContentType::APPLICATION_XML},
-
-		{".js"sv, ContentType::TEXT_JS},
-		{".css"sv, ContentType::TEXT_CSS},
-		{".txt"sv, ContentType::TEXT_TXT},
-		{".htm"sv, ContentType::TEXT_HTML},
-		{".html"sv, ContentType::TEXT_HTML},
-
-		{".png"sv, ContentType::IMAGE_PNG},
-		{".jpg"sv, ContentType::IMAGE_JPG},
-		{".jpe"sv, ContentType::IMAGE_JPG},
-		{".jpeg"sv, ContentType::IMAGE_JPG},
-		{".gif"sv, ContentType::IMAGE_GIF},
-		{".bmp"sv, ContentType::IMAGE_BMP},
-		{".ico"sv, ContentType::IMAGE_ICO},
-		{".tif"sv, ContentType::IMAGE_TIF},
-		{".tiff"sv, ContentType::IMAGE_TIF},
-		{".svg"sv, ContentType::IMAGE_SVG},
-		{".svgz"sv, ContentType::IMAGE_SVG},
-
-		{".mp3"sv, ContentType::AUDIO_MP3},
-	};
-
-	std::string_view GetContentType(std::string_view extension)
-	{
-		auto iter = EXTENSION_TO_VALUE.find(extension);
-
-		if (iter != EXTENSION_TO_VALUE.end())
-		{
-			return iter->second;
-		}
-
-		return ContentType::APPLICATION_BLANK;
-	}
-
-}  // namespace http_handler
+}  // namespace request_handler
