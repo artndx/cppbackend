@@ -280,7 +280,7 @@ std::string GameUseCase::SetAction(const json::object& action, const Token& toke
 
 std::string GameUseCase::IncreaseTime(unsigned delta, Game& game){
     game.UpdateGameState(delta);
-    std::vector<const Player*> retired_players;
+    std::deque<const Player*> retired_players;
     for(auto& [player, clock] : clocks_){
         clock.IncreaseTime(delta);
         auto inactivity_time = clock.GetInactivityTime();
@@ -295,8 +295,6 @@ std::string GameUseCase::IncreaseTime(unsigned delta, Game& game){
     for(const Player* player : retired_players){
         SaveScore(player);
         DisconnectPlayer(player, game);
-        auto it = clocks_.find(player);
-        clocks_.erase(player);
     }
 
     return "{}";
@@ -419,11 +417,15 @@ void GameUseCase::SaveScore(const Player* player){
 }
 
 void GameUseCase::DisconnectPlayer(const Player* player, Game& game){
-    game.DisconnectDogFromSession(player->GetSession(), player->GetDog());
+    const GameSession* player_game_session = player->GetSession();
+    const Dog* player_dog =  player->GetDog();
+
     tokens_.DeletePlayer(player);
+    auto it = clocks_.find(player);
+    clocks_.erase(it);
     players_.DeletePlayer(player);
-    // auto it = clocks_.find(player);
-    // clocks_.erase(it);
+
+    game.DisconnectDogFromSession(player_game_session, player_dog);
 }
 
 /* ------------------------ ListPlayersUseCase ----------------------------------- */

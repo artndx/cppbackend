@@ -74,7 +74,7 @@ ObjectsAndDogsProvider::Objects MakeOffices(const std::deque<Office>& offices){
     return result;
 }
 
-ObjectsAndDogsProvider::Dogs MakeDogs(const std::deque<Dog>& dogs, double delta){
+ObjectsAndDogsProvider::Dogs MakeDogs(const std::list<Dog>& dogs, double delta){
     ObjectsAndDogsProvider::Dogs result;
 
     for(const Dog& dog : dogs){
@@ -307,12 +307,12 @@ const Map* GameSession::GetMap() const {
     return map_;
 }
 
-std::deque<Dog>& GameSession::GetDogs(){
+std::list<Dog>& GameSession::GetDogs(){
     return dogs_;
 }
 
-const std::deque<Dog>& GameSession::GetDogs() const{
-    return static_cast<const std::deque<Dog>&>(dogs_);
+const std::list<Dog>& GameSession::GetDogs() const{
+    return static_cast<const std::list<Dog>&>(dogs_);
 }
 
 void GameSession::UpdateLoot(unsigned loot_count){
@@ -465,7 +465,7 @@ void Game::DisconnectDogFromSession(const GameSession* player_session, const Dog
     found_session.DeleteDog(erasing_dog);
 }
 
-void Game::UpdateAllDogsPositions(std::deque<Dog>& dogs, const Map* map, double delta){
+void Game::UpdateAllDogsPositions(std::list<Dog>& dogs, const Map* map, double delta){
     for(Dog& dog : dogs){
         std::vector<const Road*> roads = map->FindRoadsByCoords(dog.GetPosition());
         UpdateDogPos(dog, roads, delta);
@@ -524,7 +524,7 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
 
 void Game::UpdateDogsLoot(GameSession& session, double delta) {
     using namespace collision_detector;
-    std::deque<Dog>& dogs = session.GetDogs();
+    std::list<Dog>& dogs = session.GetDogs();
     const std::deque<Loot>& all_loots = session.GetLootObjects();
     unsigned max_bag_capacity = session.GetMap()->GetBagCapacity();
     const std::deque<Office>& offices = session.GetMap()->GetOffices();
@@ -537,7 +537,8 @@ void Game::UpdateDogsLoot(GameSession& session, double delta) {
     auto events = detail::MixEvents(FindGatherEvents(loots_provider), FindGatherEvents(offices_provider));
     std::set<size_t> collected_loot;
     for(const auto& [event, event_type] : events){
-        Dog& dog = dogs[event.gatherer_id];
+        auto it = std::next(dogs.begin(), event.gatherer_id);
+        Dog& dog = *it;
         switch (event_type){
             case detail::GatheringEventType::DOG_COLLECT_ITEM:
                 // Собака подбирает предмет

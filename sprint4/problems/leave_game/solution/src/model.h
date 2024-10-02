@@ -6,6 +6,7 @@
 #include <map>
 #include <vector>
 #include <deque>
+#include <list>
 #include <iostream>
 #include <optional>
 #include <boost/signals2.hpp>
@@ -350,9 +351,9 @@ public:
 
     const Map* GetMap() const;
 
-    std::deque<Dog>& GetDogs();
+    std::list<Dog>& GetDogs();
 
-    const std::deque<Dog>& GetDogs() const;
+    const std::list<Dog>& GetDogs() const;
 
     void UpdateLoot(unsigned loot_count);
 
@@ -366,7 +367,7 @@ public:
 private:
     unsigned auto_loot_counter_ = 0;
     std::deque<Loot> loot_;
-    std::deque<Dog> dogs_;
+    std::list<Dog> dogs_;
     const Map* map_;
 };
 
@@ -411,7 +412,7 @@ public:
 
     void DisconnectDogFromSession(const GameSession* player_session, const Dog* erasing_dog);
 private:
-    void UpdateAllDogsPositions(std::deque<Dog>& dogs, const Map* map, double delta);
+    void UpdateAllDogsPositions(std::list<Dog>& dogs, const Map* map, double delta);
 
     void UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double delta);
 
