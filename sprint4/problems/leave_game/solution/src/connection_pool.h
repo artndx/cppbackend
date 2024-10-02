@@ -86,4 +86,8 @@ private:
     ConnectionPool connection_pool_;
 };
 
+/* ------------------------ CreateTable ----------------------------------- */
+
+void CreateTable(const char* db_url);
+
 } // namespace db_connection

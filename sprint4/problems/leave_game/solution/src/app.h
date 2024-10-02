@@ -122,7 +122,7 @@ public:
     std::string GetRecords(unsigned start, unsigned max_items);
 private:
     static json::array GetBagItems(const Dog::Bag& bag_items);
-    static json::object GetPlayers(const PlayerTokens::PlayersInSession& players_in_session);
+    json::object GetPlayers(const PlayerTokens::PlayersInSession& players_in_session) const;
     static json::object GetLostObjects(const std::deque<Loot>& loots);
     void AddPlayerTimeClock(Player* player);
     void SaveScore(const Player* player);

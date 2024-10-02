@@ -280,17 +280,25 @@ std::string GameUseCase::SetAction(const json::object& action, const Token& toke
 
 std::string GameUseCase::IncreaseTime(unsigned delta, Game& game){
     game.UpdateGameState(delta);
+    std::vector<const Player*> retired_players;
     for(auto& [player, clock] : clocks_){
         clock.IncreaseTime(delta);
         auto inactivity_time = clock.GetInactivityTime();
         if(inactivity_time.has_value()){
             unsigned converted_time = static_cast<double>(inactivity_time.value().count()) / 1000;
             if(converted_time >= game.GetDogRetirementTime()){
-                SaveScore(player);
-                DisconnectPlayer(player, game);
+                retired_players.push_back(player);
             }
         }
     }
+
+    for(const Player* player : retired_players){
+        SaveScore(player);
+        DisconnectPlayer(player, game);
+        auto it = clocks_.find(player);
+        clocks_.erase(player);
+    }
+
     return "{}";
 }
 
@@ -326,7 +334,7 @@ json::array GameUseCase::GetBagItems(const Dog::Bag& bag_items){
     return items;
 };
 
-json::object GameUseCase::GetPlayers(const PlayerTokens::PlayersInSession& players_in_session){
+json::object GameUseCase::GetPlayers(const PlayerTokens::PlayersInSession& players_in_session) const{
     json::object players;
 
     for(const Player* player : players_in_session){
@@ -359,7 +367,15 @@ json::object GameUseCase::GetPlayers(const PlayerTokens::PlayersInSession& playe
 
         player_attributes["bag"] = GetBagItems(player->GetDog()->GetBag());
         player_attributes["score"] = player->GetDog()->GetScore();
-    
+        auto time = clocks_.at(player).GetInactivityTime();
+        if(time.has_value()){
+            player_attributes["retirement_time"] = time->count();
+        } else {
+            json::value empty;
+            empty.emplace_null();
+            player_attributes["retirement_time"] = empty;
+        }
+
         players[std::to_string(player->GetId())] = player_attributes;
     }
 
@@ -406,6 +422,8 @@ void GameUseCase::DisconnectPlayer(const Player* player, Game& game){
     game.DisconnectDogFromSession(player->GetSession(), player->GetDog());
     tokens_.DeletePlayer(player);
     players_.DeletePlayer(player);
+    // auto it = clocks_.find(player);
+    // clocks_.erase(it);
 }
 
 /* ------------------------ ListPlayersUseCase ----------------------------------- */

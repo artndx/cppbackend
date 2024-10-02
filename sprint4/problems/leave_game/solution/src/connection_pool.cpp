@@ -62,4 +62,37 @@ void DatabaseManager::InsertData(std::string_view name, unsigned score, double t
     w.commit();
 }
 
+/* ------------------------ CreateTable ----------------------------------- */
+
+void CreateTable(const char* db_url){
+    using pqxx::operator""_zv;
+    using namespace std::literals;
+
+    auto initial_connection_factory = [](const char* db_url){
+        auto conn = std::make_shared<pqxx::connection>(db_url);
+        return conn;
+    };
+
+    db_connection::ConnectionPool connection_pool_(1, initial_connection_factory, db_url);
+    auto conn = connection_pool_.GetConnection();
+    pqxx::work work{*conn};
+
+    work.exec(R"(
+        DROP TABLE IF EXISTS retired_players;
+        )"_zv);
+
+    work.exec(R"(
+        CREATE TABLE IF NOT EXISTS retired_players (
+            id SERIAL PRIMARY KEY,
+            name varchar(100) NOT NULL,
+            score integer NOT NULL,
+            time real NOT NULL
+        );
+        )"_zv);
+    work.exec(R"(
+            CREATE INDEX IF NOT EXISTS score_time_name_idx ON retired_players (score DESC, time, name);
+    )");
+    work.commit();
+}
+
 } // namespace db_connection
