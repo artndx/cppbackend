@@ -285,15 +285,15 @@ std::string GameUseCase::IncreaseTime(unsigned delta, Game& game){
         clock.IncreaseTime(delta);
         auto inactivity_time = clock.GetInactivityTime();
         if(inactivity_time.has_value()){
-            unsigned converted_time = static_cast<double>(inactivity_time.value().count()) / 1000;
-            if(converted_time >= game.GetDogRetirementTime()){
+            unsigned converted_time_ms = static_cast<double>(inactivity_time->count());
+            if(converted_time_ms >= (game.GetDogRetirementTime() * 1000)){
                 retired_players.push_back(player);
             }
         }
     }
 
     for(const Player* player : retired_players){
-        SaveScore(player);
+        SaveScore(player, game);
         DisconnectPlayer(player, game);
     }
 
@@ -408,10 +408,11 @@ void GameUseCase::AddPlayerTimeClock(Player* player){
     } 
 }
 
-void GameUseCase::SaveScore(const Player* player){
+void GameUseCase::SaveScore(const Player* player, Game& game){
     std::string name = *(player->GetName());
     unsigned score = player->GetDog()->GetScore();
-    double time = static_cast<double>(clocks_.at(player).GetPlaytime().count()) / 1000;
+    double given_time = static_cast<double>(clocks_.at(player).GetPlaytime().count()) / 1000;
+    double time = std::min(given_time, static_cast<double>(game.GetDogRetirementTime()));
     
     db_manager_->InsertData(name, score, time);
 }
@@ -439,4 +440,43 @@ std::string ListPlayersUseCase::GetPlayersInJSON(const PlayerTokens::PlayersInSe
     }
     return json::serialize(player_list);
 }
+
+/* ------------------------ GameStateSaveCase ----------------------------------- */
+
+void GameStateSaveCase::SaveOnTick(bool is_periodic){
+    if(save_state_period_.has_value()){
+        if(is_periodic){
+            Clock::time_point this_tick = Clock::now();
+            auto delta = std::chrono::duration_cast<Milliseconds>(this_tick - last_tick_);
+            if(delta >= FromInt(save_state_period_.value())){
+                SaveState();
+                last_tick_ = Clock::now(); 
+            }
+        } else {
+            SaveState();
+        }
+    }
+}
+
+void GameStateSaveCase::SaveState(){
+    using namespace std::literals;
+    std::fstream fstrm(state_file_ /*+ "_temp"s*/, std::ios::out);
+    boost::archive::text_oarchive output_archive{fstrm};
+    serialization::GameStateRepr writed_game_state(sessions_, players_);
+    output_archive << writed_game_state;
+}
+
+serialization::GameStateRepr GameStateSaveCase::LoadState(){
+    using namespace std::literals;
+    std::fstream fstrm(state_file_, std::ios::in);
+    serialization::GameStateRepr game_state;
+    try{
+        boost::archive::text_iarchive input_archive{fstrm};
+        input_archive >> game_state;
+        return game_state;
+    } catch(...){
+        return game_state;
+    }
+}
+
 }; //namespace app
