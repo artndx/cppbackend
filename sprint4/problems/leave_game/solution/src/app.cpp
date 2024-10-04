@@ -279,7 +279,6 @@ std::string GameUseCase::SetAction(const json::object& action, const Token& toke
 }
 
 std::string GameUseCase::IncreaseTime(unsigned delta, Game& game){
-    game.UpdateGameState(delta);
     std::deque<const Player*> retired_players;
     for(auto& [player, clock] : clocks_){
         clock.IncreaseTime(delta);
@@ -296,6 +295,8 @@ std::string GameUseCase::IncreaseTime(unsigned delta, Game& game){
         SaveScore(player, game);
         DisconnectPlayer(player, game);
     }
+
+    game.UpdateGameState(delta);
 
     return "{}";
 }
@@ -365,14 +366,14 @@ json::object GameUseCase::GetPlayers(const PlayerTokens::PlayersInSession& playe
 
         player_attributes["bag"] = GetBagItems(player->GetDog()->GetBag());
         player_attributes["score"] = player->GetDog()->GetScore();
-        auto time = clocks_.at(player).GetInactivityTime();
-        if(time.has_value()){
-            player_attributes["retirement_time"] = time->count();
-        } else {
-            json::value empty;
-            empty.emplace_null();
-            player_attributes["retirement_time"] = empty;
-        }
+        // auto time = clocks_.at(player).GetInactivityTime();
+        // if(time.has_value()){
+        //     player_attributes["retirement_time"] = time->count();
+        // } else {
+        //     json::value empty;
+        //     empty.emplace_null();
+        //     player_attributes["retirement_time"] = empty;
+        // }
 
         players[std::to_string(player->GetId())] = player_attributes;
     }
