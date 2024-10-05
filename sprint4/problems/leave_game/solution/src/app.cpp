@@ -381,7 +381,7 @@ json::object GameUseCase::GetPlayers(const PlayerTokens::PlayersInSession& playe
     return players;
 }
 
-json::object GameUseCase::GetLostObjects(const std::deque<Loot>& loots){
+json::object GameUseCase::GetLostObjects(const std::list<Loot>& loots){
     json::object lost_objects;
     
     for(const Loot& loot : loots){

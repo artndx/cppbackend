@@ -123,7 +123,7 @@ public:
 private:
     static json::array GetBagItems(const Dog::Bag& bag_items);
     json::object GetPlayers(const PlayerTokens::PlayersInSession& players_in_session) const;
-    static json::object GetLostObjects(const std::deque<Loot>& loots);
+    static json::object GetLostObjects(const std::list<Loot>& loots);
     void AddPlayerTimeClock(Player* player);
     void SaveScore(const Player* player, Game& game);
     void DisconnectPlayer(const Player* player, Game& game);

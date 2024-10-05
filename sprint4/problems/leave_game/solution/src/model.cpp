@@ -50,7 +50,7 @@ private:
     Dogs dogs_;
 };
 
-ObjectsAndDogsProvider::Objects MakeLoot(const std::deque<Loot>& loots){
+ObjectsAndDogsProvider::Objects MakeLoot(const std::list<Loot>& loots){
     ObjectsAndDogsProvider::Objects result;
 
     for(const Loot& loot : loots){
@@ -329,17 +329,17 @@ void GameSession::UpdateLoot(unsigned loot_count){
     }
 }
 
-void GameSession::SetLootObjects(std::deque<Loot> new_loot){
+void GameSession::SetLootObjects(std::list<Loot> new_loot){
     loot_ = std::move(new_loot);
 }
 
-const std::deque<Loot>& GameSession::GetLootObjects() const{
+const std::list<Loot>& GameSession::GetLootObjects() const{
     return loot_;
 }
 
-void GameSession::DeleteCollectedLoot(std::set<size_t> collected_items){
-    for(size_t loot_id : collected_items){
-        auto it = std::next(loot_.begin(), loot_id);
+void GameSession::DeleteCollectedLoot(const std::set<size_t>& collected_items){
+    for(auto collect_id = collected_items.rbegin(); collect_id != collected_items.rend(); std::advance(collect_id, 1)){
+        auto it = std::next(loot_.begin(), *collect_id);
         loot_.erase(it);
     }
 }
@@ -525,7 +525,7 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
 void Game::UpdateDogsLoot(GameSession& session, double delta) {
     using namespace collision_detector;
     std::list<Dog>& dogs = session.GetDogs();
-    const std::deque<Loot>& all_loots = session.GetLootObjects();
+    const std::list<Loot>& all_loots = session.GetLootObjects();
     unsigned max_bag_capacity = session.GetMap()->GetBagCapacity();
     const std::deque<Office>& offices = session.GetMap()->GetOffices();
 
@@ -537,8 +537,8 @@ void Game::UpdateDogsLoot(GameSession& session, double delta) {
     auto events = detail::MixEvents(FindGatherEvents(loots_provider), FindGatherEvents(offices_provider));
     std::set<size_t> collected_loot;
     for(const auto& [event, event_type] : events){
-        auto it = std::next(dogs.begin(), event.gatherer_id);
-        Dog& dog = *it;
+        auto dog_it = std::next(dogs.begin(), event.gatherer_id);
+        Dog& dog = *dog_it;
         switch (event_type){
             case detail::GatheringEventType::DOG_COLLECT_ITEM:
                 // Собака подбирает предмет
@@ -546,7 +546,9 @@ void Game::UpdateDogsLoot(GameSession& session, double delta) {
                 if((*dog.GetBag()).size() < max_bag_capacity){
                     // если до этого этот предмет не подбирали
                     if(!collected_loot.count(event.item_id)){
-                        dog.CollectItem(all_loots[event.item_id]);
+                        auto loot_it = std::next(all_loots.begin(), event.item_id);
+                        const Loot& loot = *loot_it;
+                        dog.CollectItem(loot);
                         collected_loot.insert(event.item_id);
                     }
                 }
@@ -561,7 +563,7 @@ void Game::UpdateDogsLoot(GameSession& session, double delta) {
     }
 
     /* Подобранные предметы должны пропасть с карты*/
-    session.DeleteCollectedLoot(std::move(collected_loot));
+    session.DeleteCollectedLoot(collected_loot);
 }
 
 bool Game::IsInsideRoad(const PairDouble& getting_pos, const Point& start, const Point& end){

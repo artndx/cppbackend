@@ -2,6 +2,7 @@
 #include <boost/archive/text_iarchive.hpp>
 #include <boost/archive/text_oarchive.hpp>
 #include <boost/serialization/deque.hpp>
+#include <boost/serialization/list.hpp>
 #include <boost/serialization/unordered_map.hpp>
 
 
@@ -123,19 +124,19 @@ public:
 
     SessionRepr() = default;
 
-    void AddLoots(const std::deque<Loot>& loot){
+    void AddLoots(const std::list<Loot>& loot){
         loot_ = loot;
     }
 
-    const std::deque<Loot>& GetLoot() const{
+    const std::list<Loot>& GetLoot() const{
         return loot_;
     }
 
-    void AddDogsRepr(std::deque<DogRepr> dogs_repr){
+    void AddDogsRepr(std::list<DogRepr> dogs_repr){
         dogs_repr_ = std::move(dogs_repr);
     }
 
-    const std::deque<DogRepr>& GetDogsRepr() const{
+    const std::list<DogRepr>& GetDogsRepr() const{
         return dogs_repr_;
     }
 
@@ -145,8 +146,8 @@ public:
         ar& dogs_repr_;
     }
 private:
-    std::deque<Loot> loot_;
-    std::deque<DogRepr> dogs_repr_;
+    std::list<Loot> loot_;
+    std::list<DogRepr> dogs_repr_;
 };
 
 class GameStateRepr{
@@ -156,8 +157,8 @@ public:
 
     GameStateRepr(const Game::SessionsByMapId& sessions_by_map, const Players& players){
         for(const auto& [map_id, sessions] : sessions_by_map){
-            std::deque<Loot> loot;
-            std::deque<DogRepr> dogs_repr;
+            std::list<Loot> loot;
+            std::list<DogRepr> dogs_repr;
             for(const auto& session : sessions){
                 loot = session.GetLootObjects();
                 for(const auto& dog : session.GetDogs()){

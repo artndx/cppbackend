@@ -357,16 +357,16 @@ public:
 
     void UpdateLoot(unsigned loot_count);
 
-    void SetLootObjects(std::deque<Loot> new_loot);
+    void SetLootObjects(std::list<Loot> new_loot);
 
-    const std::deque<Loot>& GetLootObjects() const;
+    const std::list<Loot>& GetLootObjects() const;
 
-    void DeleteCollectedLoot(std::set<size_t> collected_items);
+    void DeleteCollectedLoot(const std::set<size_t>& collected_items);
 
     void DeleteDog(const Dog* erasing_dog);
 private:
     unsigned auto_loot_counter_ = 0;
-    std::deque<Loot> loot_;
+    std::list<Loot> loot_;
     std::list<Dog> dogs_;
     const Map* map_;
 };
