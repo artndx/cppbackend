@@ -52,4 +52,67 @@ void Log(const json::value& data, LOG_MESSAGES message){
                             << message;
 }
 
+/* Запуск сервера */
+void LogServerStart(unsigned port, std::string_view address){
+    json::object data;
+    data["port"] = port;
+    data["address"] = address.data();
+    logger::Log(data, logger::LOG_MESSAGES::SERVER_STARTED);  
+}
+
+/* Остановка сервера */
+void LogServerExit(unsigned code, std::optional<std::string_view> exception){
+    json::object data;
+    data["code"] = code;
+    if(exception.has_value()){
+        data["exception"] = exception.value().data();
+    }
+    
+    logger::Log(data, logger::LOG_MESSAGES::SERVER_EXITED); 
+}
+
+/* Получение запроса */
+void LogRequestReceived(std::string_view ip, std::string_view url, std::string_view method){
+    json::object data;
+    data["ip"] = ip.data();
+    data["URL"] = url.data();
+    data["method"] = method.data();
+
+    logger::Log(data, logger::LOG_MESSAGES::REQUEST_RECEIVED);
+}
+
+/* Формирование ответа */
+void LogResponseSent(std::string_view ip, size_t response_time, unsigned code, std::string_view content_type){
+    json::object data;
+    data["ip"] = ip.data();
+    data["response_time"] = response_time;
+    data["code"] = code;
+    data["content_type"] = content_type.data();
+
+    logger::Log(data, logger::LOG_MESSAGES::RESPONSE_SENT);
+}
+
+/* Возникновение ошибки */
+void LogError(unsigned code, std::string_view text, std::string_view where){
+    json::object data;
+    data["code"] = code;
+    data["text"] = text.data();
+    data["where"] = where.data();
+
+    logger::Log(data, logger::LOG_MESSAGES::ERROR);
+}
+
+/* Настройка для вывода логов */
+void LogConfigure(bool toFile, bool toConsole){
+    if(toFile){
+        /* Настройка для вывода в файл */
+        FileConfig();
+    }
+
+    if(toConsole){
+        /* Настройка для вывода в консоль */
+        ConsoleConfig();
+    }
+}
+
 }; // namespace logger

@@ -38,10 +38,6 @@ public:
         : value_(v) {
     }
 
-    // Tagged(const Tagged& other)
-    //     : value_(other.value_){
-    // }
-
     const Value& operator*() const {
         return value_;
     }

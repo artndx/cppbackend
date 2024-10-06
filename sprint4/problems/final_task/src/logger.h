@@ -10,27 +10,7 @@
 #include <boost/json.hpp>
 #include <unordered_map>
 #include <chrono>
-
-/* Запуск сервера */
-#define LOG_SERVER_START(port, address) \
-    logger::Log({{"port"s, port}, {"address"s, address}}, logger::LOG_MESSAGES::SERVER_STARTED);  
-
-/* Остановка сервера */
-#define LOG_SERVER_EXIT(code, ...) \
-        logger::Log({{"code"s, code} __VA_OPT__(, {"exception"s, __VA_ARGS__})}, logger::LOG_MESSAGES::SERVER_EXITED); 
-
-/* Получение запроса */
-#define LOG_REQUEST_RECEIVED(ip, URL, method) \
-    logger::Log({{"ip"s, ip}, {"URL"s, URL}, {"method", method}}, logger::LOG_MESSAGES::REQUEST_RECEIVED);
-
-/* Формирование ответа */
-#define LOG_RESPONSE_SENT(ip, response_time, code, content_type) \
-    logger::Log({{"ip"s, ip}, {"response_time"s, response_time}, {"code"s, code}, {"content_type", content_type}}, logger::LOG_MESSAGES::RESPONSE_SENT);
-
-/* Возникновение ошибки */
-#define LOG_ERROR(code, text, where) \
-    logger::Log({{"code"s, code}, {"text"s, text}, {"where", where}}, logger::LOG_MESSAGES::ERROR);
-
+#include <optional>
 
 namespace logger{
 
@@ -80,10 +60,23 @@ void ConsoleConfig();
 
 void Log(const json::value& data, LOG_MESSAGES message);
 
+/* Запуск сервера */
+void LogServerStart(unsigned port, std::string_view address);
+
+/* Остановка сервера */
+void LogServerExit(unsigned code, std::optional<std::string_view> exception = std::nullopt);
+
+/* Получение запроса */
+void LogRequestReceived(std::string_view ip, std::string_view url, std::string_view method);
+
+/* Формирование ответа */
+void LogResponseSent(std::string_view ip, size_t response_time, 
+                    unsigned code, std::string_view content_type);
+
+/* Возникновение ошибки */
+void LogError(unsigned code, std::string_view text, std::string_view where);
+
+/* Настройка для вывода логов */
+void LogConfigure(bool toFile, bool toConsole);
+
 }; // namespace logger
-
-/* Настройка для вывода в консоль */
-#define LOG_TO_CONSOLE() logger::ConsoleConfig();
-
-/* Настройка для вывода в файл */
-#define LOG_TO_FILE() logger::FileConfig();

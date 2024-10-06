@@ -16,7 +16,6 @@ void Ticker::Start() {
 }
 
 void Ticker::ScheduleTick() {
-    assert(strand_.running_in_this_thread());
     timer_.expires_after(period_);
     timer_.async_wait([self = shared_from_this()](sys::error_code ec) {
         self->OnTick(ec);
@@ -25,7 +24,6 @@ void Ticker::ScheduleTick() {
 
 void Ticker::OnTick(sys::error_code ec) {
     using namespace std::chrono;
-    assert(strand_.running_in_this_thread());
 
     if (!ec) {
         auto this_tick = Clock::now();
@@ -53,9 +51,9 @@ void PlayerTimeClock::IncreaseTime(size_t delta){
 std::optional<Milliseconds> PlayerTimeClock::GetInactivityTime() const{
     if(current_inactivity_time_ && inactivity_start_time_){
         return duration_cast<Milliseconds>(current_inactivity_time_.value() - inactivity_start_time_.value());
-    } else {
-        return std::nullopt;
     }
+    
+    return std::nullopt;
 }
 
 void PlayerTimeClock::UpdateActivity(Dog::Speed new_speed){
@@ -479,5 +477,142 @@ serialization::GameStateRepr GameStateSaveCase::LoadState(){
         return game_state;
     }
 }
+
+/* --------------------------- Application -------------------------------- */
+
+Application::Application(Game& game, 
+                Strand api_strand, 
+                std::optional<unsigned> tick_period, 
+                std::optional<std::string> state_file, 
+                std::optional<unsigned> save_state_period,
+                bool randomize_spawn_points,
+                DatabaseManagerPtr&& db_manager)
+                : 
+                game_(game), 
+                api_strand_(api_strand),
+                tick_period_(tick_period), 
+                rand_spawn_(randomize_spawn_points), players_(), tokens_(), 
+                game_handler_(players_, tokens_, std::move(db_manager)), time_ticker_(), loot_ticker_(){
+    /* Перед началом работы приложения всегда генерируется начальный лут*/
+    GenerateLoot(Milliseconds{0});
+
+    /* 
+        Если в аргументах командной строки 
+        указан период обновления игрового состояния,
+        то создаются таймер на обновление игрового состояния 
+        и таймер на обновления лута
+    */
+    if(tick_period_.has_value()){
+        time_ticker_ = std::make_shared<detail::Ticker>(api_strand_, FromInt(*tick_period_), [this](Milliseconds delta){
+            this->IncreaseTime(delta.count() / 1000);
+        });
+
+        time_ticker_->Start();
+
+        loot_ticker_ = std::make_shared<detail::Ticker>(api_strand_, game_.GetLootGeneratePeriod(), [this](Milliseconds delta){
+            this->GenerateLoot(delta);
+        });
+
+        loot_ticker_->Start();
+    }
+
+    if(state_file.has_value()){
+        state_save_.emplace(state_file.value(), save_state_period, game_.GetAllSessions(), players_);
+    }
+} 
+
+Strand& Application::GetStrand(){
+    return api_strand_;
+}
+
+std::string Application::GetMapsList() const{
+    return ListMapsUseCase::MakeMapsList(game_.GetMaps());
+}
+
+const Map* Application::FindMap(const Map::Id& map_id) const{
+    return game_.FindMap(map_id);
+}
+
+const Player* Application::FindPlayerByToken(const Token& token) const{
+    return tokens_.FindPlayerByToken(token);
+}
+
+bool Application::IsPeriodicMode() const{
+    return tick_period_.has_value();
+}
+
+std::string Application::GetMapDescription(const Map* map) const{
+    return GetMapUseCase::MakeMapDescription(map);
+}
+
+std::string Application::GetJoinGameResult(const std::string& user_name, const std::string& map_id){
+    return game_handler_.JoinGame(user_name, map_id, game_, rand_spawn_);
+}
+
+std::string Application::GetPlayerList(const Token& token) const{
+    const GameSession* session = tokens_.FindPlayerByToken(token)->GetSession();
+    PlayerTokens::PlayersInSession players = tokens_.GetPlayersBySession(session);
+    return ListPlayersUseCase::GetPlayersInJSON(players);
+}
+
+std::string Application::GetGameState(const Token& token) const{
+    return game_handler_.GetGameState(token);
+}
+
+void Application::SaveState(){
+    if(state_save_.has_value()){
+        state_save_.value().SaveState();
+    }
+}
+
+void Application::LoadState(){
+    if(state_save_.has_value()){
+        auto game_state = state_save_.value().LoadState();
+        for(const auto& [map_id, sessions] : game_state.GetAllSessions()){
+            for(const auto& session_repr : sessions){
+                GameSession* session =  game_.AddSession(Map::Id(map_id));
+                /* Заполнение потерянных объектов */
+                session->SetLootObjects(session_repr.GetLoot());
+                for(const auto& dog_repr : session_repr.GetDogsRepr()){
+                    /* Добавление собаки */
+                    Dog* created_dog = session->AddCreatedDog(dog_repr.Restore());
+                    const auto& player_repr = dog_repr.GetPlayerRepr();
+                    /* Добавление игрока */
+                    Player& added_player = players_.Add(player_repr.GetId(), 
+                                Player::Name(player_repr.GetName()),
+                                created_dog,
+                                session);
+                    tokens_.AddPlayerWithToken(added_player, Token(player_repr.GetToken()));
+                    tokens_.AddPlayerInSession(added_player, session);
+                }
+            }
+        }
+    }
+}
+
+std::string Application::IncreaseTime(unsigned delta){
+    std::string res =  game_handler_.IncreaseTime(delta, game_);
+    /* 
+        Сохраняем игровое состояние 
+        синхроннно с ходом игровых часов только в том случае, 
+        когда указан файл сохранения и период
+    */
+    if(state_save_.has_value()){
+        state_save_.value().SaveOnTick(tick_period_.has_value());
+    }
+    return res;
+}
+
+void Application::GenerateLoot(Milliseconds delta){
+    return game_handler_.GenerateLoot(delta, game_);
+}
+
+std::string Application::ApplyPlayerAction(const json::object& action, const Token& token){
+    return game_handler_.SetAction(action, token);
+}
+
+std::string Application::GetRecords(unsigned start, unsigned max_items){
+    return game_handler_.GetRecords(start, max_items);
+} 
 
 }; //namespace app

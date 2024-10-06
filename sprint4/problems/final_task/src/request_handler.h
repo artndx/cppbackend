@@ -413,8 +413,8 @@ private:
         if(methods.IsSame(method)){
             std::string target = std::string(req.target());
             
-            unsigned start = 0;
-            unsigned max_items = 100;
+            unsigned start;
+            unsigned max_items;
             try{
                 auto url_args = detail::ParseTargetArgs(target);
                 if(url_args.contains("start")){
@@ -425,6 +425,8 @@ private:
                     max_items = std::stol(url_args.at("maxItems"));
                 }
             } catch(...){ 
+                start = 0;
+                max_items = 100;
             }
 
             if(max_items > 100){

@@ -47,11 +47,11 @@ struct Loot{
 
 class Road {
     struct HorizontalTag {
-        explicit HorizontalTag() = default;
+        HorizontalTag() = default;
     };
 
     struct VerticalTag {
-        explicit VerticalTag() = default;
+        VerticalTag() = default;
     };
 
 public:
@@ -271,9 +271,10 @@ public:
     using Offices = std::deque<Office>;
     using LootTypes = std::deque<LootType>;
 
-    Map(Id id, std::string name) noexcept
+    Map(Id id, std::string name, double road_offset) noexcept
         : id_(std::move(id))
-        , name_(std::move(name)) {
+        , name_(std::move(name))
+        , road_offset_(road_offset) {
     }
 
     const Id& GetId() const noexcept;
@@ -336,6 +337,7 @@ private:
     OfficeIdToIndex warehouse_id_to_index_;
     Offices offices_;
     double dog_speed_ = 0;
+    const double road_offset_;
     unsigned bag_capacity_;
 };
 
@@ -399,6 +401,8 @@ public:
     void SetDogRetirementTime(unsigned dog_retirement_time);
     
     unsigned GetDogRetirementTime() const;
+
+    double GetRoadOffset() const;
     
     const Maps& GetMaps() const noexcept;
 

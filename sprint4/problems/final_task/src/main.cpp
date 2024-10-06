@@ -17,12 +17,12 @@ namespace {
 
 // Запускает функцию fn на n потоках, включая текущий
 template <typename Fn>
-void RunWorkers(unsigned n, const Fn& fn) {
-    n = std::max(1u, n);
+void RunWorkers(unsigned number_threads, const Fn& fn) {
+    number_threads = std::max(1u, number_threads);
     std::vector<std::jthread> workers;
-    workers.reserve(n - 1);
+    workers.reserve(number_threads - 1);
     // Запускаем n-1 рабочих потоков, выполняющих функцию fn
-    while (--n) {
+    while (--number_threads) {
         workers.emplace_back(fn);
     }
     fn();
@@ -31,16 +31,18 @@ void RunWorkers(unsigned n, const Fn& fn) {
 }  // namespace
 
 int main(int argc, const char* argv[]) {
-    LOG_TO_CONSOLE();
+    using namespace logger;
+
+    LogConfigure(false, true);
     std::optional<cmd_parser::Args> args;
     try{
         args = cmd_parser::ParseCommandLine(argc, argv);
         if(!args.has_value()){
-            LOG_SERVER_EXIT(0);
+            LogServerExit(EXIT_SUCCESS);
             return EXIT_SUCCESS;
         }
     }catch(const std::exception& ex){
-        LOG_SERVER_EXIT(EXIT_FAILURE, ex.what());
+        LogServerExit(EXIT_FAILURE, ex.what());
         return EXIT_FAILURE;
     }
 
@@ -88,7 +90,7 @@ int main(int argc, const char* argv[]) {
         
 
         // Эта надпись сообщает тестам о том, что сервер запущен и готов обрабатывать запросы
-        LOG_SERVER_START(port, address.to_string());
+        LogServerStart(port, address.to_string());
 
         // 7. Запускаем обработку асинхронных операций
         RunWorkers(std::max(1u, NUM_THREADS), [&ioc] {
@@ -99,8 +101,8 @@ int main(int argc, const char* argv[]) {
         handler->SaveState();
         
     } catch (const std::exception& ex) {
-        LOG_SERVER_EXIT(EXIT_FAILURE, ex.what());
+        LogServerExit(EXIT_FAILURE, ex.what());
         return EXIT_FAILURE;
     }
-    LOG_SERVER_EXIT(0);
+    LogServerExit(EXIT_SUCCESS);
 }

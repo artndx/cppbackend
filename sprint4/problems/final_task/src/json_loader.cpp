@@ -98,7 +98,7 @@ void AddMaps(const json::array& json_maps, Game& game){
     for(const json::value& value : json_maps){
         json::object json_map = value.as_object();  
 
-        Map map{Map::Id{GetString("id", json_map)}, GetString("name", json_map)};
+        Map map{Map::Id{GetString("id", json_map)}, GetString("name", json_map), game.GetRoadOffset()};
         double dog_speed = game.GetDefaultDogSpeed();
         unsigned bag_cap = game.GetDefaultBagCapacity();
 

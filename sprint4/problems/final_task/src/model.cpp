@@ -35,7 +35,7 @@ public:
     }
 
     Item GetItem(size_t idx) const override{
-        return objects_[idx];
+        return objects_.at(idx);
     }
 
     size_t GatherersCount() const override{
@@ -43,7 +43,7 @@ public:
     }
 
     Gatherer GetGatherer(size_t idx) const override{
-        return dogs_[idx];
+        return dogs_.at(idx);
     }
 private:
     Objects objects_;
@@ -286,8 +286,8 @@ bool Map::CheckBounds(ConstRoadIt it, const Dog::Position& pos) const{
     if(it->second.IsInvert()){
         std::swap(start, end);
     }
-    return ((start.x - 0.4 <= (*pos).x && (*pos).x <= end.x + 0.4) && 
-                (start.y - 0.4 <= (*pos).y && (*pos).y <= end.y + 0.4));
+    return ((start.x - road_offset_ <= (*pos).x && (*pos).x <= end.x + road_offset_) && 
+                (start.y - road_offset_ <= (*pos).y && (*pos).y <= end.y + road_offset_));
 }
 /* ------------------------ GameSession ----------------------------------- */
 
@@ -418,6 +418,10 @@ unsigned Game::GetDogRetirementTime() const{
     return dog_retirement_time_;
 }
 
+double Game::GetRoadOffset() const{
+    return road_offset_;
+}
+
 const Game::Maps& Game::GetMaps() const noexcept {
     return maps_;
 }
@@ -498,16 +502,16 @@ void Game::UpdateDogPos(Dog& dog, const std::vector<const Road*>& roads, double 
             return;
         }
 
-        if(start.x - 0.4 >= getting_pos.x) {
-            result_pos.x = start.x - 0.4;
-        } else if(getting_pos.x >= end.x + 0.4){
-            result_pos.x = end.x + 0.4;
+        if(start.x - road_offset_ >= getting_pos.x) {
+            result_pos.x = start.x - road_offset_;
+        } else if(getting_pos.x >= end.x + road_offset_){
+            result_pos.x = end.x + road_offset_;
         }
 
-        if(start.y - 0.4 >= getting_pos.y) {
-            result_pos.y = start.y - 0.4;
-        } else if(getting_pos.y >= end.y + 0.4){
-            result_pos.y = end.y + 0.4;
+        if(start.y - road_offset_ >= getting_pos.y) {
+            result_pos.y = start.y - road_offset_;
+        } else if(getting_pos.y >= end.y + road_offset_){
+            result_pos.y = end.y + road_offset_;
         }
 
         collisions.insert(result_pos);
